@@ -11,10 +11,10 @@
 // Queste sono le credenziali per connettere l'app al tuo progetto Firebase.
 // Le hai già fornite e le ho inserite qui per te.
 export const firebaseConfig = {
-  apiKey: "AIzaSyCnwQXs1VSUWtcgt2hgfc0MIrFFHGjHE9o",
-  authDomain: "daily-check-8abe7.firebaseapp.com",
-  projectId: "daily-check-8abe7",
-  storageBucket: "daily-check-8abe7.firebasestorage.app",
-  messagingSenderId: "706807186375",
-  appId: "1:706807186375:web:a8a9e3878c6565d521cfe2"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
