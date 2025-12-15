@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/png" href="/app-logo.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daily Check</title>
+  <!-- PWA Manifest Link -->
+  <link rel="manifest" href="/manifest.json" />
+  <!-- Theme Color for Browser UI -->
+  <meta name="theme-color" content="#3b82f6">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            slate: {
+              850: '#1e293b', // Custom dark shade
+              900: '#0f172a',
+              950: '#020617',
+            }
+          },
+          animation: {
+            'blob': 'blob 7s infinite',
+            'fade-in': 'fadeIn 0.5s ease-out',
+            'scale-up': 'scaleUp 0.3s ease-out',
+            'slide-in-right': 'slideInRight 0.3s ease-out',
+            'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+          },
+          keyframes: {
+            blob: {
+              '0%': { transform: 'translate(0px, 0px) scale(1)' },
+              '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+              '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+              '100%': { transform: 'translate(0px, 0px) scale(1)' },
+            },
+            fadeIn: {
+              '0%': { opacity: '0' },
+              '100%': { opacity: '1' },
+            },
+            scaleUp: {
+              '0%': { transform: 'scale(0.95)', opacity: '0' },
+              '100%': { transform: 'scale(1)', opacity: '1' },
+            },
+            slideInRight: {
+              '0%': { transform: 'translateX(100%)' },
+              '100%': { transform: 'translateX(0)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scrollbar for better aesthetics */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+
+    .dark ::-webkit-scrollbar-track {
+      background: #1e293b;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #888;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+
+    body {
+      /* A subtle pattern for a more premium feel */
+      background-image: radial-gradient(circle at 1px 1px, #d1d5db 1px, transparent 0);
+      background-size: 20px 20px;
+      transition: background-color 0.3s ease;
+    }
+
+    .dark body {
+      background-color: #000000;
+      /* Pitch Black */
+      background-image: none;
+    }
+
+    /* Hide default number input arrows for a cleaner, custom UI */
+    input[type='number']::-webkit-inner-spin-button,
+    input[type='number']::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    input[type='number'] {
+      -moz-appearance: textfield;
+      /* Firefox */
+    }
+  </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react-dom/client": "https://aistudiocdn.com/react-dom@^19.2.0/client",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "recharts": "https://aistudiocdn.com/recharts@^3.3.0",
+    "firebase/app": "https://aistudiocdn.com/firebase@^12.5.0/app.js",
+    "firebase/auth": "https://aistudiocdn.com/firebase@^12.5.0/auth.js",
+    "firebase/firestore": "https://aistudiocdn.com/firebase@^12.5.0/firestore.js",
+    "firebase/": "https://aistudiocdn.com/firebase@^12.5.0/"
+  }
+}
+</script>
+</head>
+
+<body class="bg-gray-50 dark:bg-black antialiased text-slate-900 dark:text-slate-100">
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+
+  <!-- Load PDF libraries globally at the end of body -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</body>
+
+</html>
