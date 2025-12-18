@@ -22,6 +22,7 @@ import MonthlyReportModal from './components/MonthlyReportModal';
 import ContractSelectorModal from './components/ContractSelectorModal';
 import VisionBoardModal from './components/VisionBoardModal';
 import AddAppointmentModal from './components/AddAppointmentModal';
+import TargetCalculatorModal from './components/TargetCalculatorModal'; // Added
 import DetailedGuideModal from './components/DetailedGuideModal';
 import LeadCaptureModal from './components/LeadCaptureModal';
 import CalendarModal from './components/CalendarModal';
@@ -101,6 +102,7 @@ const App: React.FC = () => {
   const [isAddAppointmentModalOpen, setIsAddAppointmentModalOpen] = useState(false);
   const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+  const [isTargetCalculatorModalOpen, setIsTargetCalculatorModalOpen] = useState(false); // Added
 
   // New "WOW" features state
   const [isPowerModeOpen, setIsPowerModeOpen] = useState(false);
@@ -477,8 +479,10 @@ const App: React.FC = () => {
                 nextAppointment={settings.nextAppointment}
                 onOpenSettings={handleOpenSettings}
                 onOpenVisionBoardSettings={() => setIsVisionBoardModalOpen(true)}
+                onOpenVisionBoardSettings={() => setIsVisionBoardModalOpen(true)}
                 onOpenLeadCapture={handleOpenLeadCapture}
                 onOpenCalendar={() => setIsCalendarModalOpen(true)}
+                onOpenTargetCalculator={() => setIsTargetCalculatorModalOpen(true)}
               />
             </div>
             <div className="lg:col-span-2 space-y-8">
@@ -603,6 +607,13 @@ const App: React.FC = () => {
           todayCounts={selectedDateLog?.counts || {}}
           userProfile={settings.userProfile}
           customLabels={effectiveCustomLabels}
+        />
+        <TargetCalculatorModal
+          isOpen={isTargetCalculatorModalOpen}
+          onClose={() => setIsTargetCalculatorModalOpen(false)}
+          currentEarnings={monthlyEarnings}
+          commercialMonthStartDay={settings.commercialMonthStartDay || 16}
+          userStatus={settings.userProfile.commissionStatus || CommissionStatus.PRIVILEGIATO}
         />
       </div>
     </>
