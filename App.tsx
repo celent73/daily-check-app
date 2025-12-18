@@ -479,7 +479,6 @@ const App: React.FC = () => {
                 nextAppointment={settings.nextAppointment}
                 onOpenSettings={handleOpenSettings}
                 onOpenVisionBoardSettings={() => setIsVisionBoardModalOpen(true)}
-                onOpenVisionBoardSettings={() => setIsVisionBoardModalOpen(true)}
                 onOpenLeadCapture={handleOpenLeadCapture}
                 onOpenCalendar={() => setIsCalendarModalOpen(true)}
                 onOpenTargetCalculator={() => setIsTargetCalculatorModalOpen(true)}
