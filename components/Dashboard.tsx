@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 
 // Importazioni base
-import { ActivityLog, ActivityType, Goals, GoalPeriod, UserProfile } from '../types';
+import { ActivityLog, ActivityType, Goals, GoalPeriod, UserProfile, Qualification } from '../types';
 import {
   getWeekIdentifier,
   getMonthIdentifier,
@@ -26,6 +26,7 @@ interface DashboardProps {
   onOpenAchievements: () => void;
   commercialMonthStartDay: number;
   customLabels?: Record<ActivityType, string>;
+  onUpdateQualification: (q: Qualification) => void;
 }
 
 type ViewMode = 'daily' | 'weekly' | 'monthly' | 'commercial_monthly' | 'yearly' | 'custom';
@@ -95,7 +96,7 @@ const CARD_STYLES: Record<ActivityType, { gradient: string, shadow: string, icon
   },
 };
 
-const Dashboard: React.FC<DashboardProps> = ({ activityLogs, goals, userProfile, onOpenAchievements, commercialMonthStartDay, customLabels }) => {
+const Dashboard: React.FC<DashboardProps> = ({ activityLogs, goals, userProfile, onOpenAchievements, commercialMonthStartDay, customLabels, onUpdateQualification }) => {
   if (!activityLogs || !Array.isArray(activityLogs)) {
     return <div className="p-6">Caricamento dati...</div>;
   }
@@ -323,6 +324,20 @@ const Dashboard: React.FC<DashboardProps> = ({ activityLogs, goals, userProfile,
         <div>
           <h2 className="text-3xl font-black text-slate-800 dark:text-white">Dashboard</h2>
           <p className="text-md font-medium text-slate-500 dark:text-slate-400">Analisi per <span className="text-blue-600 font-bold">{userProfile.firstName}</span></p>
+
+          <div className="mt-2 flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 p-2 rounded-lg w-fit border border-slate-200 dark:border-slate-700">
+            <span className="text-xs font-bold text-slate-400 uppercase">Qualifica:</span>
+            <select
+              className="bg-transparent text-sm font-bold text-slate-700 dark:text-white outline-none cursor-pointer"
+              value={userProfile.currentQualification || ''}
+              onChange={(e) => onUpdateQualification(e.target.value as Qualification)}
+            >
+              <option value="" disabled>Seleziona...</option>
+              {Object.values(Qualification).map(q => (
+                <option key={q} value={q}>{q}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-1 p-1.5 bg-slate-100 dark:bg-black/50 rounded-2xl border border-slate-200 dark:border-slate-800">

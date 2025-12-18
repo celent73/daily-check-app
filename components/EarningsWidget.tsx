@@ -61,10 +61,10 @@ const EarningsWidget: React.FC<EarningsWidgetProps> = ({ dailyEarnings, monthlyE
     };
 
     return (
-        <div className="bg-white dark:bg-black rounded-2xl p-5 shadow-lg mb-6 border border-slate-200 dark:border-slate-800 relative overflow-hidden group">
+        <div className="bg-slate-900 rounded-2xl p-5 shadow-lg mb-6 border border-slate-800 relative overflow-hidden group">
 
             {/* Shine Effect */}
-            <div className="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white dark:to-slate-600 opacity-20 group-hover:animate-shine" />
+            <div className="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-10 group-hover:animate-shine" />
 
             <div className="relative z-10">
                 <div className="flex justify-between items-start mb-4">
@@ -72,12 +72,12 @@ const EarningsWidget: React.FC<EarningsWidgetProps> = ({ dailyEarnings, monthlyE
                         <div className="p-2.5 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl shadow-lg shadow-orange-500/20 text-white animate-pulse-slow">
                             <WalletIcon />
                         </div>
-                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Riepilogo Guadagni</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Riepilogo Guadagni</p>
                     </div>
 
                     <button
                         onClick={handleExportPDF}
-                        className="p-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded-lg transition-colors"
+                        className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors border border-slate-700"
                         title="Esporta PDF"
                     >
                         <DownloadIcon />
@@ -86,15 +86,15 @@ const EarningsWidget: React.FC<EarningsWidgetProps> = ({ dailyEarnings, monthlyE
 
                 <div className="flex items-end justify-between">
                     <div>
-                        <p className="text-[10px] font-medium text-slate-400 mb-1">OGGI</p>
+                        <p className="text-[10px] font-medium text-slate-500 mb-1">OGGI</p>
                         <div className="flex items-baseline gap-1">
-                            <span className="text-2xl font-black text-slate-900 dark:text-white">€{dailyEarnings.toFixed(2)}</span>
+                            <span className="text-2xl font-black text-white">€{dailyEarnings.toFixed(2)}</span>
                         </div>
                     </div>
 
                     <div className="text-right">
-                        <p className="text-[10px] font-medium text-slate-400 mb-1">MESE</p>
-                        <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">€{monthlyEarnings.toFixed(2)}</p>
+                        <p className="text-[10px] font-medium text-slate-500 mb-1">MESE</p>
+                        <p className="text-lg font-bold text-emerald-400">€{monthlyEarnings.toFixed(2)}</p>
                     </div>
                 </div>
             </div>

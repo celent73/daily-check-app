@@ -15,6 +15,19 @@ export enum CommissionStatus {
   FAMILY_UTILITY = 'FAMILY_UTILITY'
 }
 
+export enum Qualification {
+  FAMILY_PRO = 'Family Pro',
+  FAMILY_3S = 'Family 3S',
+  FAMILY_5S = 'Family 5S',
+  PRO_MANAGER = 'Pro Manager',
+  REGIONAL_MANAGER = 'Regional Manager',
+  NATIONAL_MANAGER = 'National Manager',
+  DIRECTOR = 'Director',
+  DIRECTOR_PRO = 'Director Pro',
+  AMBASSADOR = 'Ambassador',
+  PRESIDENT = 'President'
+}
+
 export enum ContractType {
   GREEN = 'GREEN', // Azzeriamola Green
   LIGHT = 'LIGHT'  // Union Light
@@ -58,6 +71,8 @@ export interface UserProfile {
   firstName: string;
   lastName: string;
   commissionStatus?: CommissionStatus;
+  currentQualification?: Qualification | null;
+  targetQualification?: Qualification | null;
 }
 
 export interface VisionBoardData {
@@ -138,3 +153,15 @@ export interface Achievement {
 export type UnlockedAchievements = {
   [key in AchievementId]?: { unlockedAt: string };
 };
+
+export interface TeamMemberStats {
+  id: string; // generated ID to avoid duplicates
+  name: string;
+  stats: {
+    [key in ActivityType]?: number;
+  };
+  totalScore: number; // For sorting
+  period: string; // YYYY-MM
+  generatedAt: string;
+}
+

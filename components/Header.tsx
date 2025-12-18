@@ -16,6 +16,7 @@ interface HeaderProps {
     currentTheme: Theme;
     onOpenMonthlyReport: () => void;
     onOpenGuide: () => void;
+    onOpenTeamChallenge: () => void;
 }
 
 const QuestionMarkIcon = () => (
@@ -56,8 +57,44 @@ const DocumentIcon = () => (
     </svg>
 );
 
+const InstallButton = () => {
+    const [deferredPrompt, setDeferredPrompt] = React.useState<any>(null);
+
+    React.useEffect(() => {
+        const handler = (e: any) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+        };
+        window.addEventListener('beforeinstallprompt', handler);
+        return () => window.removeEventListener('beforeinstallprompt', handler);
+    }, []);
+
+    const handleInstallClick = async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+            setDeferredPrompt(null);
+        }
+    };
+
+    if (!deferredPrompt) return null;
+
+    return (
+        <button
+            onClick={handleInstallClick}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-pink-500 to-rose-500 shadow-lg shadow-pink-500/30 hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 animate-pulse-slow"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            <span className="hidden sm:inline">Installa App</span>
+        </button>
+    );
+};
+
 const Header: React.FC<HeaderProps> = ({
-    userProfile, onOpenSettings, onOpenDeleteDataModal, careerStatus, isPremium, remainingTrialDays, onOpenPaywall, isAnonymous, toggleTheme, currentTheme, onOpenMonthlyReport, onOpenGuide
+    userProfile, onOpenSettings, onOpenDeleteDataModal, careerStatus, isPremium, remainingTrialDays, onOpenPaywall, isAnonymous, toggleTheme, currentTheme, onOpenMonthlyReport, onOpenGuide, onOpenTeamChallenge
 }) => {
 
     return (
@@ -76,6 +113,9 @@ const Header: React.FC<HeaderProps> = ({
                 </h1>
 
                 <div className="flex items-center gap-2 sm:gap-4">
+                    {/* INSTALL BUTTON (PWA) */}
+                    <InstallButton />
+
                     {/* Guide Button */}
                     <button
                         onClick={onOpenGuide}
@@ -101,6 +141,17 @@ const Header: React.FC<HeaderProps> = ({
                         title="Genera Report Mensile"
                     >
                         <DocumentIcon />
+                    </button>
+
+                    <button
+                        onClick={onOpenTeamChallenge}
+                        className="p-2 rounded-full text-white/90 hover:bg-white/20 hover:scale-110 active:scale-95 transition-all duration-300 flex items-center justify-center"
+                        aria-label="Sfida Team"
+                        title="Classifica Team"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
                     </button>
 
                     {userProfile.firstName ? (

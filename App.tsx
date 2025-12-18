@@ -1,12 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { ActivityLog, ActivityType, AppSettings, Notification, NotificationVariant, UnlockedAchievements, Achievement, Theme, CommissionStatus, ContractType, VisionBoardData, NextAppointment } from './types';
+import { ActivityLog, ActivityType, AppSettings, Notification, NotificationVariant, UnlockedAchievements, Achievement, Theme, CommissionStatus, ContractType, VisionBoardData, NextAppointment, Qualification } from './types';
 import { loadLogs, saveLogs, loadSettings, saveSettings, loadUnlockedAchievements, saveUnlockedAchievements, clearLogs } from './services/storageService';
-import { auth, db, isFirebaseInitialized } from './services/firebase';
-
-// ✅ CORREZIONE: Rimosso il punto finale in "firebase/auth" e "firebase/firestore"
-import { onAuthStateChanged, type User } from 'firebase/auth';
-import { doc, onSnapshot, getDoc } from "firebase/firestore";
-
 import { getTodayDateString, calculateProgressForActivity, getCommercialMonthRange } from './utils/dateUtils';
 import Header from './components/Header';
 import ActivityInput from './components/ActivityInput';
@@ -20,7 +14,6 @@ import { checkAndUnlockAchievements } from './utils/achievements';
 import ResetGoalsModal from './components/ResetGoalsModal';
 import PaywallModal from './components/PaywallModal';
 import AchievementsModal from './components/AchievementsModal';
-import LoginScreen from './components/LoginScreen';
 import PowerMode from './components/PowerMode';
 import ObjectionHandler from './components/ObjectionHandler';
 import SocialShareModal from './components/SocialShareModal';
@@ -31,7 +24,9 @@ import AddAppointmentModal from './components/AddAppointmentModal';
 import DetailedGuideModal from './components/DetailedGuideModal';
 import LeadCaptureModal from './components/LeadCaptureModal';
 import CalendarModal from './components/CalendarModal';
+
 import VoiceSpeedMode from './components/VoiceSpeedMode';
+import TeamLeaderboardModal from './components/TeamLeaderboardModal';
 
 const DEFAULT_SETTINGS: AppSettings = {
   userProfile: {
@@ -100,6 +95,7 @@ const App: React.FC = () => {
   const [isVisionBoardModalOpen, setIsVisionBoardModalOpen] = useState(false);
   const [isAddAppointmentModalOpen, setIsAddAppointmentModalOpen] = useState(false);
   const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
 
   // New "WOW" features state
   const [isPowerModeOpen, setIsPowerModeOpen] = useState(false);
@@ -115,14 +111,12 @@ const App: React.FC = () => {
   const [selectedInputDate, setSelectedInputDate] = useState<Date>(new Date());
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [isLocked, setIsLocked] = useState(false);
-  const [remainingTrialDays] = useState<number | null>(null);
-  const [isPremium, setIsPremium] = useState(false);
+  const [isLocked, setIsLocked] = useState(false); // Always unlocked
+  const [remainingTrialDays] = useState<number | null>(null); // No trial needed
+  const [isPremium, setIsPremium] = useState(true); // Always Premium
+  const isAnonymous = false;
 
-  // Auth and Anonymous State
-  const [user, setUser] = useState<User | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
-  const [isAnonymous, setAnonymous] = useState(false);
 
   // Achievements State
   const [unlockedAchievements, setUnlockedAchievements] = useState<UnlockedAchievements>({});
@@ -135,11 +129,14 @@ const App: React.FC = () => {
       document.documentElement.classList.remove('dark');
     }
   }, [settings.theme]);
+  // Derive settings respecting the master toggles
+  const effectiveCustomLabels = (settings.enableCustomLabels ?? true)
+    ? (settings.customLabels || ACTIVITY_LABELS)
+    : ACTIVITY_LABELS;
 
-  const toggleTheme = () => {
-    const newTheme: Theme = settings.theme === 'light' ? 'dark' : 'light';
-    setSettings((prev: AppSettings) => ({ ...prev, theme: newTheme }));
-  };
+  const effectiveGoals = (settings.enableGoals ?? true)
+    ? settings.goals
+    : { daily: {}, weekly: {}, monthly: {} };
 
   const addNotification = useCallback((message: string, type: NotificationVariant) => {
     setNotifications(prev => [...prev, { id: Date.now(), message, type }]);
@@ -154,11 +151,6 @@ const App: React.FC = () => {
     setSettingsModalOpen(true);
   };
 
-  const handleOpenVisionBoard = () => {
-    setIsVisionBoardModalOpen(true);
-  };
-
-  // Load local data for anonymous users
   const loadLocalData = useCallback(async () => {
     const [loadedLogs, loadedSettings, loadedAchievements] = await Promise.all([
       loadLogs(null),
@@ -171,126 +163,26 @@ const App: React.FC = () => {
     setIsInitializing(false);
   }, []);
 
-  // Check for anonymous state on initial load
+  // Load local data on init
   useEffect(() => {
-    const wasAnonymous = localStorage.getItem('isAnonymousUser') === 'true';
-    if (wasAnonymous && !isFirebaseInitialized) {
-      setAnonymous(true);
-      loadLocalData();
-    } else if (wasAnonymous && isFirebaseInitialized && auth && !auth.currentUser) {
-      setAnonymous(true);
-      loadLocalData();
+    loadLocalData();
+  }, [loadLocalData]);
+
+  // Persist settings on change
+  useEffect(() => {
+    if (!isInitializing) {
+      saveSettings(null, settings);
     }
-    // Let the Firebase auth listener handle the rest
-  }, [loadLocalData, isFirebaseInitialized]);
+  }, [settings, isInitializing]);
 
-  // Data migration logic
-  const migrateLocalDataToFirestore = useCallback(async (userId: string) => {
-    if (!db) return;
-    const [localLogs, localSettings, localAchievements] = await Promise.all([
-      loadLogs(null),
-      loadSettings(null),
-      loadUnlockedAchievements(null)
-    ]);
 
-    if (localLogs.length > 0 || localSettings || Object.keys(localAchievements).length > 0) {
-      const userDoc = await getDoc(doc(db, "users", userId));
-      if (userDoc.exists() && (userDoc.data().settings || userDoc.data().achievements)) {
-        console.log("Remote data found. Skipping migration of local data to avoid overwrites.");
-      } else {
-        addNotification("Sincronizzazione dei dati locali con il cloud...", 'info');
-        await Promise.all([
-          saveLogs(userId, localLogs),
-          saveSettings(userId, localSettings || DEFAULT_SETTINGS),
-          saveUnlockedAchievements(userId, localAchievements)
-        ]);
-        addNotification("I tuoi dati locali sono stati salvati nel tuo account!", 'success');
-      }
-      // Clear local data after migration attempt
-      localStorage.removeItem('daily-check-app-logs');
-      localStorage.removeItem('daily-check-app-settings');
-      localStorage.removeItem('daily-check-app-achievements');
-    }
-  }, [addNotification]);
 
-  // Effect for handling Firebase Authentication state changes
-  useEffect(() => {
-    if (!isFirebaseInitialized || !auth) {
-      if (!isAnonymous) setIsInitializing(false);
-      return;
-    };
+  const toggleTheme = () => {
+    const newTheme: Theme = settings.theme === 'light' ? 'dark' : 'light';
+    setSettings((prev: AppSettings) => ({ ...prev, theme: newTheme }));
+  };
 
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setIsInitializing(true);
-      if (currentUser) {
-        setAnonymous(false);
-        localStorage.removeItem('isAnonymousUser');
-        await migrateLocalDataToFirestore(currentUser.uid);
-        setUser(currentUser);
 
-        const [loadedSettings, loadedLogs, loadedAchievements] = await Promise.all([
-          loadSettings(currentUser.uid),
-          loadLogs(currentUser.uid),
-          loadUnlockedAchievements(currentUser.uid),
-        ]);
-
-        setSettings(loadedSettings ? { ...DEFAULT_SETTINGS, ...loadedSettings } : DEFAULT_SETTINGS);
-        setActivityLogs(loadedLogs);
-        setUnlockedAchievements(loadedAchievements);
-      } else {
-        setUser(null);
-        if (!isAnonymous) { // Don't wipe data if user logs out to become anonymous
-          setActivityLogs([]);
-          setSettings(DEFAULT_SETTINGS);
-          setUnlockedAchievements({});
-        }
-      }
-      setIsInitializing(false);
-    });
-    return () => unsubscribe();
-  }, [isFirebaseInitialized, isAnonymous, migrateLocalDataToFirestore]);
-
-  // Effect for listening to premium status changes in real-time
-  useEffect(() => {
-    if (!isFirebaseInitialized || !user || !db) {
-      setIsPremium(false);
-      // Lock only if not premium and not anonymous
-      setIsLocked(!isAnonymous);
-      return;
-    };
-
-    const userDocRef = doc(db, "users", user.uid);
-    const unsubscribe = onSnapshot(userDocRef, (doc) => {
-      const data = doc.data();
-      const premiumStatus = data?.isPremium || data?.subscriptionStatus === 'active' || false;
-      setIsPremium(premiumStatus);
-      setIsLocked(!premiumStatus); // Lock if not premium
-    });
-
-    return () => unsubscribe();
-  }, [user, isFirebaseInitialized, isAnonymous]);
-
-  // Save data to Firestore or LocalStorage when it changes
-  useEffect(() => {
-    saveLogs(user?.uid || null, activityLogs);
-  }, [activityLogs, user]);
-
-  useEffect(() => {
-    saveSettings(user?.uid || null, settings);
-  }, [settings, user]);
-
-  useEffect(() => {
-    saveUnlockedAchievements(user?.uid || null, unlockedAchievements);
-  }, [unlockedAchievements, user]);
-
-  // Derive settings respecting the master toggles
-  const effectiveCustomLabels = (settings.enableCustomLabels ?? true)
-    ? (settings.customLabels || ACTIVITY_LABELS)
-    : ACTIVITY_LABELS;
-
-  const effectiveGoals = (settings.enableGoals ?? true)
-    ? settings.goals
-    : { daily: {}, weekly: {}, monthly: {} };
 
   const checkAndNotify = useCallback((
     oldProgress: { daily: number, weekly: number, monthly: number },
@@ -298,33 +190,26 @@ const App: React.FC = () => {
     goals: AppSettings['goals'],
     activity: ActivityType
   ) => {
-    // If goals disabled globally, don't notify
     if (settings.enableGoals === false) return;
-
     const activityLabel = effectiveCustomLabels[activity];
     const periodLabels: Record<'daily' | 'weekly' | 'monthly', string> = {
       daily: 'giornaliero',
       weekly: 'settimanale',
       monthly: 'mensile'
     };
-
     (['daily', 'weekly', 'monthly'] as const).forEach(period => {
       const goal = goals[period]?.[activity];
       if (!goal || goal <= 0) return;
-
       const oldP = oldProgress[period];
       const newP = newProgress[period];
-
       if (settings.notificationSettings.goalReached && newP >= goal && oldP < goal) {
         addNotification(`Congratulazioni! Obiettivo ${periodLabels[period]} raggiunto per "${activityLabel}".`, 'success');
       }
-
       if (settings.notificationSettings.milestones) {
         const eightyPercent = goal * 0.8;
         if (newP >= eightyPercent && oldP < eightyPercent && newP < goal) {
           addNotification(`Sei vicino! Mancano ${goal - newP} per l'obiettivo ${periodLabels[period]} di "${activityLabel}".`, 'info');
         }
-
         const fiftyPercent = goal * 0.5;
         if (newP >= fiftyPercent && oldP < fiftyPercent && newP < eightyPercent) {
           addNotification(`Metà strada! Sei a buon punto per l'obiettivo ${periodLabels[period]} di "${activityLabel}".`, 'info');
@@ -336,8 +221,6 @@ const App: React.FC = () => {
   const updateActivityLog = useCallback((activity: ActivityType, change: number, dateStr: string, contractType?: ContractType) => {
     setActivityLogs(prevLogs => {
       const oldProgress = calculateProgressForActivity(prevLogs, activity, settings.commercialMonthStartDay);
-
-      // Deep copy logic to avoid mutation in Strict Mode
       const newLogs = prevLogs.map(log => {
         if (log.date === dateStr) {
           return {
@@ -349,20 +232,15 @@ const App: React.FC = () => {
         }
         return log;
       });
-
       let dateLog = newLogs.find(log => log.date === dateStr);
-
       if (!dateLog) {
         dateLog = { date: dateStr, counts: {} };
         newLogs.push(dateLog);
       }
-
-      // Now safe to mutate dateLog because it's a fresh object or copy
       const currentCount = dateLog.counts[activity] || 0;
       const newCount = Math.max(0, currentCount + change);
       dateLog.counts[activity] = newCount;
 
-      // Update contract breakdown if applicable
       if (contractType) {
         if (!dateLog.contractDetails) dateLog.contractDetails = {};
         const currentTypeCount = dateLog.contractDetails[contractType] || 0;
@@ -370,26 +248,16 @@ const App: React.FC = () => {
       }
 
       const newProgress = calculateProgressForActivity(newLogs, activity, settings.commercialMonthStartDay);
-
       if (change > 0) {
-        // Run side effects outside if possible, but for notification dispatch it's okay-ish here 
-        // Note: checking signals inside updater is risky for double-firing side effects in strict mode, 
-        // but notifications usually have unique IDs or we accept duplicate toasts in dev.
-        // For production it's fine.
         checkAndNotify(oldProgress, newProgress, effectiveGoals, activity);
       }
-
       const { newlyUnlocked, updatedAchievements } = checkAndUnlockAchievements(newLogs, settings, unlockedAchievements);
       if (newlyUnlocked.length > 0) {
-        // This setUnlockedAchievements might trigger another render, but it's separate.
-        // To be pure, we should probably set this in a useEffect, but refactoring that is large.
-        // We'll keep it but acknowledge Strict Mode might fire this twice in Dev (duplicate toasts).
         setUnlockedAchievements(updatedAchievements);
         newlyUnlocked.forEach((achievement: Achievement) => {
           addNotification(`Traguardo Sbloccato: ${achievement.name}!`, 'success');
         });
       }
-
       return newLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     });
   }, [settings, checkAndNotify, unlockedAchievements, addNotification, effectiveGoals]);
@@ -410,22 +278,16 @@ const App: React.FC = () => {
   };
 
   const handleSaveVisionBoard = (visionData: VisionBoardData) => {
-    setSettings((prev: AppSettings) => ({
-      ...prev,
-      visionBoard: visionData
-    }));
+    setSettings((prev: AppSettings) => ({ ...prev, visionBoard: visionData }));
   };
 
   const handleAppointmentSchedule = (appointment: NextAppointment) => {
-    setSettings((prev: AppSettings) => ({
-      ...prev,
-      nextAppointment: appointment
-    }));
+    setSettings((prev: AppSettings) => ({ ...prev, nextAppointment: appointment }));
     addNotification("Appuntamento salvato! Conto alla rovescia avviato.", "success");
   };
 
   const handleClearAllData = async () => {
-    await clearLogs(user?.uid || null);
+    await clearLogs(null);
     setActivityLogs([]);
     setDeleteDataModalOpen(false);
     addNotification('Tutto lo storico delle attività è stato cancellato.', 'success');
@@ -435,7 +297,6 @@ const App: React.FC = () => {
     const { start, end } = getCommercialMonthRange(new Date(), settings.commercialMonthStartDay);
     const startTime = start.getTime();
     const endTime = end.getTime();
-
     setActivityLogs(prevLogs => {
       const filteredLogs = prevLogs.filter(log => {
         const logTime = new Date(log.date).getTime();
@@ -443,16 +304,12 @@ const App: React.FC = () => {
       });
       return filteredLogs;
     });
-
     setDeleteDataModalOpen(false);
     addNotification('Dati del mese commerciale corrente eliminati.', 'success');
   };
 
   const handleResetGoals = () => {
-    setSettings((prev: AppSettings) => ({
-      ...prev,
-      goals: { daily: {}, weekly: {}, monthly: {} }
-    }));
+    setSettings((prev: AppSettings) => ({ ...prev, goals: { daily: {}, weekly: {}, monthly: {} } }));
     setResetGoalsModalOpen(false);
     addNotification('Obiettivi reimpostati per il nuovo mese!', 'success');
   };
@@ -462,12 +319,6 @@ const App: React.FC = () => {
     addNotification('Il pagamento viene processato... l\'app si sbloccherà automaticamente.', 'info');
   };
 
-  const handleAnonymousContinue = () => {
-    setAnonymous(true);
-    localStorage.setItem('isAnonymousUser', 'true');
-    loadLocalData();
-  };
-
   const handleOpenLeadCapture = (type: ActivityType) => {
     setLeadCaptureType(type);
     setIsLeadCaptureModalOpen(true);
@@ -475,8 +326,6 @@ const App: React.FC = () => {
 
   const handleSaveLead = (leadData: { name: string; phone: string; note: string }) => {
     const dateStr = selectedInputDate.toISOString().split('T')[0];
-
-    // Update logs with new lead and increment count
     setActivityLogs(prevLogs => {
       const newLogs = [...prevLogs];
       let dateLog = newLogs.find(log => log.date === dateStr);
@@ -484,8 +333,6 @@ const App: React.FC = () => {
         dateLog = { date: dateStr, counts: {} };
         newLogs.push(dateLog);
       }
-
-      // Add Lead
       if (!dateLog.leads) dateLog.leads = [];
       dateLog.leads.push({
         id: Date.now().toString(),
@@ -494,19 +341,25 @@ const App: React.FC = () => {
         status: 'pending',
         ...leadData
       });
-
-      // Increment Count
       const currentCount = dateLog.counts[leadCaptureType] || 0;
       dateLog.counts[leadCaptureType] = currentCount + 1;
-
       return newLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     });
-
     setIsLeadCaptureModalOpen(false);
     addNotification(`${leadCaptureType === ActivityType.APPOINTMENTS ? 'Appuntamento' : 'Contatto'} salvato con successo!`, 'success');
   };
 
-  // Commission Rates
+  const handleUpdateQualification = (newQualification: Qualification) => {
+    setSettings(prev => ({
+      ...prev,
+      userProfile: {
+        ...prev.userProfile,
+        currentQualification: newQualification
+      }
+    }));
+    addNotification(`Qualifica aggiornata a: ${newQualification} 🚀`, 'success');
+  };
+
   const COMMISSION_RATES = useMemo(() => {
     return {
       [CommissionStatus.PRIVILEGIATO]: { [ContractType.GREEN]: 25, [ContractType.LIGHT]: 12.5 },
@@ -514,68 +367,35 @@ const App: React.FC = () => {
     };
   }, []);
 
-  // Calculate earnings
   const { dailyEarnings, monthlyEarnings } = useMemo(() => {
     const selectedDateStr = selectedInputDate.toISOString().split('T')[0];
     const { start, end } = getCommercialMonthRange(selectedInputDate, settings.commercialMonthStartDay);
     const userStatus = settings.userProfile.commissionStatus || CommissionStatus.PRIVILEGIATO;
     const rates = COMMISSION_RATES[userStatus];
-
     let dailyTotal = 0;
     let monthlyTotal = 0;
-
     activityLogs.forEach(log => {
       const logDate = new Date(log.date);
       const breakdown = log.contractDetails || {};
       const greenCount = breakdown[ContractType.GREEN] || 0;
       const lightCount = breakdown[ContractType.LIGHT] || 0;
-
       const logEarnings = (greenCount * rates[ContractType.GREEN]) + (lightCount * rates[ContractType.LIGHT]);
-
       if (log.date === selectedDateStr) {
         dailyTotal += logEarnings;
       }
-
       if (logDate.getTime() >= start.getTime() && logDate.getTime() <= end.getTime()) {
         monthlyTotal += logEarnings;
       }
     });
-
     return { dailyEarnings: dailyTotal, monthlyEarnings: monthlyTotal };
-
   }, [activityLogs, selectedInputDate, settings.commercialMonthStartDay, settings.userProfile.commissionStatus, COMMISSION_RATES]);
 
-  if (!isFirebaseInitialized && !isAnonymous) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900 p-4">
-        <div className="max-w-xl w-full bg-white dark:bg-slate-800 shadow-lg rounded-2xl p-8 text-center border-t-4 border-red-500">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-red-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Errore di Configurazione</h1>
-          <p className="text-slate-600 dark:text-slate-300">
-            L'applicazione non è riuscita a connettersi ai servizi di backend (Firebase).
-            Questo è probabilmente dovuto a una configurazione mancante o non corretta.
-          </p>
-          <p className="text-sm text-slate-500 mt-4">
-            (Dettaglio tecnico: `initializeApp` non è stato eseguito con successo. Controlla la console per maggiori informazioni e verifica le variabili d'ambiente di Firebase).
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // Get log for the selected date
   const selectedDateStr = selectedInputDate.toISOString().split('T')[0];
   const selectedDateLog = activityLogs.find(log => log.date === selectedDateStr);
-
   const careerStatus = useMemo(() => calculateCareerStatus(activityLogs), [activityLogs]);
-
-  // Calculate commercial month totals for the selected date's commercial month
   const commercialMonthTotals = useMemo(() => {
     const range = getCommercialMonthRange(selectedInputDate, settings.commercialMonthStartDay);
     const totals: { [key in ActivityType]?: number } = {};
-
     activityLogs.forEach(log => {
       const d = new Date(log.date);
       if (d.getTime() >= range.start.getTime() && d.getTime() <= range.end.getTime()) {
@@ -596,14 +416,10 @@ const App: React.FC = () => {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <p className="mt-4 text-slate-600 dark:text-slate-300">Inizializzazione in corso...</p>
+          <p className="mt-4 text-slate-600 dark:text-slate-300">Caricamento...</p>
         </div>
       </div>
     );
-  }
-
-  if (!user && !isAnonymous) {
-    return <LoginScreen onAnonymousContinue={handleAnonymousContinue} />;
   }
 
   return (
@@ -624,10 +440,10 @@ const App: React.FC = () => {
           isPremium={isPremium}
           remainingTrialDays={remainingTrialDays}
           onOpenPaywall={() => setIsPaywallModalOpen(true)}
-          isAnonymous={isAnonymous}
           toggleTheme={toggleTheme}
           currentTheme={settings.theme || 'light'}
           onOpenMonthlyReport={() => setIsMonthlyReportModalOpen(true)}
+          onOpenTeamChallenge={() => setIsTeamModalOpen(true)}
           onOpenGuide={() => setIsGuideModalOpen(true)}
         />
         <main className="container mx-auto p-4 md:p-6 lg:p-8">
@@ -652,7 +468,7 @@ const App: React.FC = () => {
                 visionBoardData={settings.visionBoard}
                 nextAppointment={settings.nextAppointment}
                 onOpenSettings={handleOpenSettings}
-                onOpenVisionBoardSettings={handleOpenVisionBoard}
+                onOpenVisionBoardSettings={() => setIsVisionBoardModalOpen(true)}
                 onOpenLeadCapture={handleOpenLeadCapture}
                 onOpenCalendar={() => setIsCalendarModalOpen(true)}
               />
@@ -665,6 +481,7 @@ const App: React.FC = () => {
                 onOpenAchievements={() => setAchievementsModalOpen(true)}
                 commercialMonthStartDay={settings.commercialMonthStartDay || 16}
                 customLabels={effectiveCustomLabels}
+                onUpdateQualification={handleUpdateQualification}
               />
               <CareerStatus activityLogs={activityLogs} />
             </div>
@@ -748,6 +565,13 @@ const App: React.FC = () => {
         <DetailedGuideModal
           isOpen={isGuideModalOpen}
           onClose={() => setIsGuideModalOpen(false)}
+        />
+        <TeamLeaderboardModal
+          isOpen={isTeamModalOpen}
+          onClose={() => setIsTeamModalOpen(false)}
+          activityLogs={activityLogs}
+          userName={`${settings.userProfile.firstName} ${settings.userProfile.lastName}`.trim()}
+          commercialStartDay={settings.commercialMonthStartDay || 16}
         />
 
         {/* WOW Features */}
