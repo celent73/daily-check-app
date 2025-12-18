@@ -12,7 +12,17 @@ interface SocialShareModalProps {
 }
 
 const SocialShareModal: React.FC<SocialShareModalProps> = ({ isOpen, onClose, todayCounts, userProfile, customLabels }) => {
+    const storyRef = useRef<HTMLDivElement>(null);
+    const [isGenerating, setIsGenerating] = useState(false);
     const [selectedTheme, setSelectedTheme] = useState<'cyber' | 'sunset' | 'nature' | 'noir'>('cyber');
+
+    // Calculate total actions for the headline
+    const totalActions = Object.values(todayCounts || {}).reduce((a: number, b: number | undefined) => a + (b || 0), 0);
+
+    // Get date string
+    const dateStr = new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    if (!isOpen) return null;
 
     const THEMES = {
         cyber: {
