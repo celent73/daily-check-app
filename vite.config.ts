@@ -37,17 +37,16 @@ export default defineConfig({
             type: 'image/png'
           }
         ]
-      }
-    },
+      },
       workbox: {
-      navigateFallback: '/index.html',
-      globPatterns: ['**/*.{js,css,html,ico,png,svg}']
-    }
+        navigateFallback: '/index.html',
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
+      }
     })
   ],
-build: {
-  outDir: 'dist',       // cartella di output
+  build: {
+    outDir: 'dist',       // cartella di output
     assetsDir: 'assets',  // cartella degli asset
-      sourcemap: false      // disattiva mappe per ridurre dimensioni
-},
+    sourcemap: false      // disattiva mappe per ridurre dimensioni
+  },
 });
