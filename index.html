@@ -12,21 +12,38 @@
   <meta name="theme-color" content="#3b82f6">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
-    // GLOBAL ERROR HANDLER FOR MOBILE DEBUGGING
+    // VISUAL LOGGER FOR MOBILE DEBUGGING
+    function logToScreen(msg) {
+      const logContainer = document.getElementById('debug-log');
+      if (logContainer) {
+        const line = document.createElement('div');
+        line.textContent = '> ' + msg;
+        line.style.borderBottom = '1px solid #334155';
+        line.style.padding = '4px 0';
+        logContainer.appendChild(line);
+        console.log(msg);
+      }
+    }
+
     window.onerror = function (msg, url, lineNo, columnNo, error) {
-      const errorContainer = document.getElementById('root') || document.body;
-      errorContainer.innerHTML = `
-        <div style="padding: 20px; color: white; background: #7f1d1d; height: 100vh; font-family: monospace; overflow: auto;">
-          <h2 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 10px;">Errore Avvio</h2>
-          <p style="margin-bottom: 10px;"><strong>Messaggio:</strong> ${msg}</p>
-          <p style="margin-bottom: 10px;"><strong>File:</strong> ${url}</p>
-          <p><strong>Linea:</strong> ${lineNo}:${columnNo}</p>
-          <pre style="margin-top: 20px; white-space: pre-wrap; color: #fecaca;">${error ? error.stack : ''}</pre>
-        </div>
-      `;
+      logToScreen('ERROR: ' + msg + ' (' + lineNo + ')');
       return false;
     };
 
+    window.addEventListener('unhandledrejection', function (event) {
+      logToScreen('PROMISE ERROR: ' + event.reason);
+    });
+
+    // Notify user that HTML executed
+    window.addEventListener('DOMContentLoaded', () => {
+      logToScreen('DOM Loaded');
+    });
+    window.addEventListener('load', () => {
+      logToScreen('Window Loaded');
+    });
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
     tailwind.config = {
       darkMode: 'class',
       theme: {
@@ -159,6 +176,10 @@
           }
         }
       </style>
+      <div id="debug-log"
+        style="margin-top: 20px; font-family: monospace; font-size: 10px; color: #94a3b8; text-align: left; width: 100%; max-width: 300px; max-height: 200px; overflow: auto;">
+        <div>Inizializzazione...</div>
+      </div>
     </div>
   </div>
   <script type="module" src="/index.tsx"></script>
