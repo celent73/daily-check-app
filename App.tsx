@@ -10,6 +10,7 @@ import DeleteDataModal from './components/ConfirmationModal';
 import CareerStatus from './components/CareerStatus';
 import { ACTIVITY_LABELS } from './constants';
 import { calculateCareerStatus } from './utils/careerUtils';
+import { calculateCurrentStreak } from './utils/gamificationUtils';
 import { checkAndUnlockAchievements } from './utils/achievements';
 import ResetGoalsModal from './components/ResetGoalsModal';
 import PaywallModal from './components/PaywallModal';
