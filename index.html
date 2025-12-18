@@ -12,36 +12,6 @@
   <meta name="theme-color" content="#3b82f6">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
-    // Global Error Handler
-    window.onerror = function (msg, url, lineNo, columnNo, error) {
-      console.error('Global Error:', msg, url, lineNo, error);
-      return false;
-    };
-
-    // Notify user that HTML executed
-    window.addEventListener('DOMContentLoaded', () => {
-      logToScreen('DOM Loaded');
-
-      // NUCLEAR OPTION: Unregister all Service Workers to clear stale cache
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function (registrations) {
-          for (let registration of registrations) {
-            logToScreen('Removing Old Service Worker...');
-            registration.unregister();
-          }
-          if (registrations.length > 0) {
-            logToScreen('Cache Cleared! Reloading...');
-            setTimeout(() => window.location.reload(), 1000); // Reload once after clearing
-          }
-        });
-      }
-    });
-    window.addEventListener('load', () => {
-      logToScreen('Window Loaded');
-    });
-  </script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
     tailwind.config = {
       darkMode: 'class',
       theme: {
@@ -181,6 +151,20 @@
   <!-- Load PDF libraries globally at the end of body -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+  <script>
+    // Silent Service Worker Cleanup (ensures users get fresh version)
+    window.addEventListener('DOMContentLoaded', () => {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function (registrations) {
+          for (let registration of registrations) {
+            // Just unregister silenty, no reload loop or logs
+            registration.unregister();
+          }
+        });
+      }
+    });
+  </script>
 </body>
 
 </html>
