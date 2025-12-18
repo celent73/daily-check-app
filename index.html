@@ -12,103 +12,77 @@
   <meta name="theme-color" content="#3b82f6">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
-    // VISUAL LOGGER FOR MOBILE DEBUGGING
-    function logToScreen(msg) {
-      const logContainer = document.getElementById('debug-log');
-      if (logContainer) {
-        const line = document.createElement('div');
-        line.textContent = '> ' + msg;
-        line.style.borderBottom = '1px solid #334155';
-        line.style.padding = '4px 0';
-        logContainer.appendChild(line);
-        console.log(msg);
-      }
-    }
-
+    // Global Error Handler
     window.onerror = function (msg, url, lineNo, columnNo, error) {
-      logToScreen('ERROR: ' + msg + ' (' + lineNo + ')');
+      console.error('Global Error:', msg, url, lineNo, error);
       return false;
     };
 
-    // CAPTURE RESOURCE LOADING ERRORS (Scripts, Images, CSS)
-    window.addEventListener('error', function (e) {
-      if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
-        const src = e.target.src || e.target.href;
-        logToScreen('RESOURCE ERROR: Failed to load ' + src);
+    // Notify user that HTML executed
+    window.addEventListener('DOMContentLoaded', () => {
+      logToScreen('DOM Loaded');
+
+      // NUCLEAR OPTION: Unregister all Service Workers to clear stale cache
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function (registrations) {
+          for (let registration of registrations) {
+            logToScreen('Removing Old Service Worker...');
+            registration.unregister();
+          }
+          if (registrations.length > 0) {
+            logToScreen('Cache Cleared! Reloading...');
+            setTimeout(() => window.location.reload(), 1000); // Reload once after clearing
+          }
+        });
       }
-    }, true);
-
-    window.addEventListener('unhandledrejection', function (event) {
-
-      window.addEventListener('unhandledrejection', function (event) {
-        logToScreen('PROMISE ERROR: ' + event.reason);
-      });
-
-      // Notify user that HTML executed
-      window.addEventListener('DOMContentLoaded', () => {
-        logToScreen('DOM Loaded');
-
-        // NUCLEAR OPTION: Unregister all Service Workers to clear stale cache
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.getRegistrations().then(function (registrations) {
-            for (let registration of registrations) {
-              logToScreen('Removing Old Service Worker...');
-              registration.unregister();
-            }
-            if (registrations.length > 0) {
-              logToScreen('Cache Cleared! Reloading...');
-              setTimeout(() => window.location.reload(), 1000); // Reload once after clearing
-            }
-          });
-        }
-      });
-      window.addEventListener('load', () => {
-        logToScreen('Window Loaded');
-      });
+    });
+    window.addEventListener('load', () => {
+      logToScreen('Window Loaded');
+    });
   </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            colors: {
-              slate: {
-                850: '#1e293b', // Custom dark shade
-                900: '#0f172a',
-                950: '#020617',
-              }
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            slate: {
+              850: '#1e293b', // Custom dark shade
+              900: '#0f172a',
+              950: '#020617',
+            }
+          },
+          animation: {
+            'blob': 'blob 7s infinite',
+            'fade-in': 'fadeIn 0.5s ease-out',
+            'scale-up': 'scaleUp 0.3s ease-out',
+            'slide-in-right': 'slideInRight 0.3s ease-out',
+            'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+          },
+          keyframes: {
+            blob: {
+              '0%': { transform: 'translate(0px, 0px) scale(1)' },
+              '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+              '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+              '100%': { transform: 'translate(0px, 0px) scale(1)' },
             },
-            animation: {
-              'blob': 'blob 7s infinite',
-              'fade-in': 'fadeIn 0.5s ease-out',
-              'scale-up': 'scaleUp 0.3s ease-out',
-              'slide-in-right': 'slideInRight 0.3s ease-out',
-              'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            fadeIn: {
+              '0%': { opacity: '0' },
+              '100%': { opacity: '1' },
             },
-            keyframes: {
-              blob: {
-                '0%': { transform: 'translate(0px, 0px) scale(1)' },
-                '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
-                '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
-                '100%': { transform: 'translate(0px, 0px) scale(1)' },
-              },
-              fadeIn: {
-                '0%': { opacity: '0' },
-                '100%': { opacity: '1' },
-              },
-              scaleUp: {
-                '0%': { transform: 'scale(0.95)', opacity: '0' },
-                '100%': { transform: 'scale(1)', opacity: '1' },
-              },
-              slideInRight: {
-                '0%': { transform: 'translateX(100%)' },
-                '100%': { transform: 'translateX(0)' },
-              }
+            scaleUp: {
+              '0%': { transform: 'scale(0.95)', opacity: '0' },
+              '100%': { transform: 'scale(1)', opacity: '1' },
+            },
+            slideInRight: {
+              '0%': { transform: 'translateX(100%)' },
+              '100%': { transform: 'translateX(0)' },
             }
           }
         }
       }
+    }
   </script>
   <style>
     /* Custom scrollbar for better aesthetics */
@@ -200,10 +174,6 @@
           }
         }
       </style>
-      <div id="debug-log"
-        style="margin-top: 20px; font-family: monospace; font-size: 10px; color: #94a3b8; text-align: left; width: 100%; max-width: 300px; max-height: 200px; overflow: auto;">
-        <div>Inizializzazione v3 (Re-deploy)...</div>
-      </div>
     </div>
   </div>
   <script type="module" src="/index.tsx"></script>

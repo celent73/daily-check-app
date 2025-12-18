@@ -82,8 +82,7 @@ const NotificationItem: React.FC<{ notification: Notification; onClose: () => vo
 
 const App: React.FC = () => {
   useEffect(() => {
-    // @ts-ignore
-    if (window.logToScreen) window.logToScreen('App Component Mounted!');
+    // App Mounted
   }, []);
 
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
