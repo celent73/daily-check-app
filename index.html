@@ -47,6 +47,20 @@
       // Notify user that HTML executed
       window.addEventListener('DOMContentLoaded', () => {
         logToScreen('DOM Loaded');
+
+        // NUCLEAR OPTION: Unregister all Service Workers to clear stale cache
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function (registrations) {
+            for (let registration of registrations) {
+              logToScreen('Removing Old Service Worker...');
+              registration.unregister();
+            }
+            if (registrations.length > 0) {
+              logToScreen('Cache Cleared! Reloading...');
+              setTimeout(() => window.location.reload(), 1000); // Reload once after clearing
+            }
+          });
+        }
       });
       window.addEventListener('load', () => {
         logToScreen('Window Loaded');
