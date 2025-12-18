@@ -9,9 +9,26 @@ import SettingsModal from './components/SettingsModal';
 import DeleteDataModal from './components/ConfirmationModal';
 import CareerStatus from './components/CareerStatus';
 import { ACTIVITY_LABELS } from './constants';
-import { calculateCareerStatus } from './utils/careerUtils';
-import { checkAndUnlockAchievements } from './utils/achievements';
-import ResetGoalsModal from './components/ResetGoalsModal';
+import { calculateCurrentStreak } from './utils/gamificationUtils';
+
+// ... existing imports ...
+
+// Inside App component:
+  const streak = useMemo(() => calculateCurrentStreak(activityLogs), [activityLogs]);
+
+  return (
+    <>
+      <div className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2 items-end pointer-events-none">
+        {/* ... */}
+      </div>
+      <div className="min-h-screen text-slate-800 dark:text-slate-100 transition-colors duration-300">
+        <Header
+          userProfile={settings.userProfile}
+          onOpenSettings={() => handleOpenSettings('profile')}
+          onOpenDeleteDataModal={() => setDeleteDataModalOpen(true)}
+          careerStatus={careerStatus}
+          streak={streak} // Pass streak here
+          isPremium={isPremium}
 import PaywallModal from './components/PaywallModal';
 import AchievementsModal from './components/AchievementsModal';
 import PowerMode from './components/PowerMode';
@@ -426,6 +443,8 @@ const App: React.FC = () => {
     );
   }
 
+  const streak = useMemo(() => calculateCurrentStreak(activityLogs), [activityLogs]);
+
   return (
     <>
       <div className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2 items-end pointer-events-none">
@@ -441,6 +460,7 @@ const App: React.FC = () => {
           onOpenSettings={() => handleOpenSettings('profile')}
           onOpenDeleteDataModal={() => setDeleteDataModalOpen(true)}
           careerStatus={careerStatus}
+          streak={streak}
           isPremium={isPremium}
           remainingTrialDays={remainingTrialDays}
           onOpenPaywall={() => setIsPaywallModalOpen(true)}
