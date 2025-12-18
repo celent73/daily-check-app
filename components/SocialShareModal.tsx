@@ -12,31 +12,51 @@ interface SocialShareModalProps {
 }
 
 const SocialShareModal: React.FC<SocialShareModalProps> = ({ isOpen, onClose, todayCounts, userProfile, customLabels }) => {
-    const storyRef = useRef<HTMLDivElement>(null);
-    const [isGenerating, setIsGenerating] = useState(false);
+    const [selectedTheme, setSelectedTheme] = useState<'cyber' | 'sunset' | 'nature' | 'noir'>('cyber');
 
-    if (!isOpen) return null;
+    const THEMES = {
+        cyber: {
+            bg: 'from-blue-900 via-slate-900 to-black',
+            accent: 'from-blue-400 to-cyan-300',
+            glow: 'bg-blue-500/20',
+            text: 'text-blue-500'
+        },
+        sunset: {
+            bg: 'from-orange-900 via-rose-900 to-black',
+            accent: 'from-orange-400 to-yellow-300',
+            glow: 'bg-orange-500/20',
+            text: 'text-orange-500'
+        },
+        nature: {
+            bg: 'from-emerald-900 via-teal-900 to-black',
+            accent: 'from-emerald-400 to-green-300',
+            glow: 'bg-emerald-500/20',
+            text: 'text-emerald-500'
+        },
+        noir: {
+            bg: 'from-gray-900 via-zinc-900 to-black',
+            accent: 'from-white to-slate-400',
+            glow: 'bg-white/10',
+            text: 'text-white'
+        }
+    };
 
-    // Calculate total actions for the headline
-    const totalActions = Object.values(todayCounts || {}).reduce((a: number, b: number | undefined) => a + (b || 0), 0);
-
-    // Get date string
-    const dateStr = new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
+    const activeTheme = THEMES[selectedTheme];
 
     const handleDownload = async () => {
         if (!storyRef.current) return;
         setIsGenerating(true);
         try {
             const canvas = await html2canvas(storyRef.current, {
-                scale: 2, // High resolution
+                scale: 3, // Ultra High resolution
                 useCORS: true,
-                backgroundColor: null, // Transparent background if possible, or matches div
+                backgroundColor: null,
             });
 
             const image = canvas.toDataURL("image/png");
             const link = document.createElement('a');
             link.href = image;
-            link.download = `daily-check-story-${new Date().toISOString().split('T')[0]}.png`;
+            link.download = `daily-check-${selectedTheme}-${new Date().toISOString().split('T')[0]}.png`;
             link.click();
         } catch (error) {
             console.error("Error generating story:", error);
@@ -63,9 +83,10 @@ const SocialShareModal: React.FC<SocialShareModalProps> = ({ isOpen, onClose, to
                 {/* Ref attached here for capture */}
                 <div ref={storyRef} className="relative bg-black aspect-[9/16] p-6 flex flex-col justify-between overflow-hidden group cursor-default select-none">
                     {/* Dynamic Background */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-900 via-slate-900 to-black opacity-100"></div>
-                    <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/20 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2"></div>
-                    <div className="absolute bottom-0 left-0 w-80 h-80 bg-purple-500/20 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2"></div>
+                    {/* Dynamic Background */}
+                    <div className={`absolute inset-0 bg-gradient-to-br ${activeTheme.bg} opacity-100 transition-colors duration-500`}></div>
+                    <div className={`absolute top-0 right-0 w-80 h-80 ${activeTheme.glow} rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 transition-colors duration-500`}></div>
+                    <div className={`absolute bottom-0 left-0 w-80 h-80 ${activeTheme.glow} rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2 transition-colors duration-500`}></div>
 
                     {/* Particles/Stars (Static CSS) */}
                     <div className="absolute inset-0 opacity-30 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] brightness-100 contrast-150"></div>
@@ -75,7 +96,7 @@ const SocialShareModal: React.FC<SocialShareModalProps> = ({ isOpen, onClose, to
                         {/* Top Brand */}
                         <div className="flex items-center justify-between mb-8 opacity-90">
                             <div className="flex items-center gap-2 bg-white/10 p-1.5 pr-3 rounded-full backdrop-blur-md border border-white/10">
-                                <div className="bg-gradient-to-br from-blue-500 to-cyan-400 p-1.5 rounded-full">
+                                <div className={`bg-gradient-to-br ${activeTheme.accent} p-1.5 rounded-full`}>
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                                     </svg>
@@ -89,7 +110,7 @@ const SocialShareModal: React.FC<SocialShareModalProps> = ({ isOpen, onClose, to
                         <div className="mb-8">
                             <h2 className="text-5xl font-black leading-[0.9] tracking-tighter drop-shadow-2xl mb-2">
                                 BEAST<br />
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">MODE</span><br />
+                                <span className={`text-transparent bg-clip-text bg-gradient-to-r ${activeTheme.accent}`}>MODE</span><br />
                                 ACTIVATED
                             </h2>
                             <div className="h-1.5 w-20 bg-blue-500 rounded-full mt-4"></div>
@@ -136,6 +157,24 @@ const SocialShareModal: React.FC<SocialShareModalProps> = ({ isOpen, onClose, to
 
                 {/* Footer Actions */}
                 <div className="p-4 bg-slate-50 dark:bg-black border-t border-slate-100 dark:border-slate-800 text-center space-y-3">
+
+                    {/* Theme Selectors */}
+                    <div className="flex justify-center gap-3 mb-2">
+                        {(Object.keys(THEMES) as Array<keyof typeof THEMES>).map(theme => (
+                            <button
+                                key={theme}
+                                onClick={() => setSelectedTheme(theme)}
+                                className={`w-8 h-8 rounded-full border-2 transition-all ${selectedTheme === theme ? 'border-blue-500 scale-125' : 'border-transparent opacity-70 hover:opacity-100 hover:scale-110'}`}
+                                style={{
+                                    background: theme === 'cyber' ? '#3b82f6' :
+                                        theme === 'sunset' ? '#f97316' :
+                                            theme === 'nature' ? '#10b981' : '#333'
+                                }}
+                                aria-label={`Select ${theme} theme`}
+                            />
+                        ))}
+                    </div>
+
                     <button
                         onClick={handleDownload}
                         disabled={isGenerating}
