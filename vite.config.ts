@@ -1,11 +1,16 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import legacy from '@vitejs/plugin-legacy';
 
 // Configurazione Vite ottimizzata per Netlify e deploy statici
 export default defineConfig({
   base: './', // 🔥 IMPORTANTISSIMO per evitare pagina bianca su Netlify
   plugins: [
+    legacy({
+      targets: ['defaults', 'not IE 11', 'Android >= 9'],
+      additionalLegacyPolyfills: ['regenerator-runtime/runtime']
+    }),
     react(),
     VitePWA({
       registerType: 'autoUpdate',
