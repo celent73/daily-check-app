@@ -5,7 +5,7 @@ import legacy from '@vitejs/plugin-legacy';
 
 // Configurazione Vite ottimizzata per Netlify e deploy statici
 export default defineConfig({
-  base: './', // 🔥 IMPORTANTISSIMO per evitare pagina bianca su Netlify
+  base: '/', // 🔥 Change to absolute path for PWA stability
   plugins: [
     legacy({
       targets: ['defaults', 'not IE 11', 'Android >= 9'],
