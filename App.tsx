@@ -415,6 +415,8 @@ const App: React.FC = () => {
     return totals;
   }, [activityLogs, selectedInputDate, settings.commercialMonthStartDay]);
 
+  const streak = useMemo(() => calculateCurrentStreak(activityLogs), [activityLogs]);
+
   if (isInitializing) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900">
@@ -428,8 +430,6 @@ const App: React.FC = () => {
       </div>
     );
   }
-
-  const streak = useMemo(() => calculateCurrentStreak(activityLogs), [activityLogs]);
 
   return (
     <>

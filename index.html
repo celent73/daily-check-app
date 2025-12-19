@@ -102,21 +102,26 @@
       /* Firefox */
     }
   </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react-dom/client": "https://aistudiocdn.com/react-dom@^19.2.0/client",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "recharts": "https://aistudiocdn.com/recharts@^3.3.0",
-    "firebase/app": "https://aistudiocdn.com/firebase@^12.5.0/app.js",
-    "firebase/auth": "https://aistudiocdn.com/firebase@^12.5.0/auth.js",
-    "firebase/firestore": "https://aistudiocdn.com/firebase@^12.5.0/firestore.js",
-    "firebase/": "https://aistudiocdn.com/firebase@^12.5.0/"
-  }
-}
-</script>
+  <script>
+    // Global Error Handler to debug "White Screen"
+    window.onerror = function (message, source, lineno, colno, error) {
+      console.error(message, error);
+      const errorContainer = document.createElement('div');
+      errorContainer.style.position = 'fixed';
+      errorContainer.style.top = '0';
+      errorContainer.style.left = '0';
+      errorContainer.style.width = '100%';
+      errorContainer.style.backgroundColor = '#fee2e2';
+      errorContainer.style.color = '#991b1b';
+      errorContainer.style.padding = '20px';
+      errorContainer.style.zIndex = '999999';
+      errorContainer.style.borderBottom = '2px solid #7f1d1d';
+      errorContainer.style.fontFamily = 'monospace';
+      errorContainer.style.fontSize = '12px';
+      errorContainer.innerHTML = '<strong>A Critical Error Occurred:</strong><br/>' + message + '<br/>' + source + ':' + lineno;
+      document.body.appendChild(errorContainer);
+    };
+  </script>
 </head>
 
 <body class="bg-gray-50 dark:bg-black antialiased text-slate-900 dark:text-slate-100">

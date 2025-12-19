@@ -19,6 +19,8 @@ const TargetCalculatorModal: React.FC<TargetCalculatorModalProps> = ({
     const [targetIncome, setTargetIncome] = useState<number>(1500);
     const [manualDays, setManualDays] = useState<number | ''>('');
     const [useManualDays, setUseManualDays] = useState(false);
+    const [speed, setSpeed] = useState<'slow' | 'medium' | 'fast'>('medium');
+    const [avgContractValue, setAvgContractValue] = useState<number>(35); // User requested default 35€
 
     // Constants (could be moved to shared file)
     const RATES = {
@@ -26,10 +28,25 @@ const TargetCalculatorModal: React.FC<TargetCalculatorModalProps> = ({
         [CommissionStatus.FAMILY_UTILITY]: { [ContractType.GREEN]: 50, [ContractType.LIGHT]: 25 }
     };
 
-    const CONVERSION = {
-        CONTACT_TO_APPT: 0.15, // 15%
-        APPT_TO_CONTRACT: 0.30, // 30%
+    const CONVERSION_RATES = {
+        slow: {
+            CONTACT_TO_APPT: 0.15, // 15% (Old Default)
+            APPT_TO_CONTRACT: 0.30, // 30%
+            label: 'Recluta (15% / 30%)'
+        },
+        medium: {
+            CONTACT_TO_APPT: 0.25, // 25%
+            APPT_TO_CONTRACT: 0.40, // 40%
+            label: 'Veterano (25% / 40%)'
+        },
+        fast: {
+            CONTACT_TO_APPT: 0.40, // 40%
+            APPT_TO_CONTRACT: 0.50, // 50%
+            label: 'Top Performer (40% / 50%)'
+        }
     };
+
+    const currentRates = CONVERSION_RATES[speed];
 
     // Calculate remaining days
     const [remainingDays, setRemainingDays] = useState(0);
@@ -64,20 +81,16 @@ const TargetCalculatorModal: React.FC<TargetCalculatorModalProps> = ({
     const daysCalc = useManualDays && manualDays ? Number(manualDays) : remainingDays;
     const incomeGap = Math.max(0, targetIncome - currentEarnings);
 
-    // Average earnings per contract (assuming 50/50 mix for simplicity)
-    const rates = RATES[userStatus] || RATES[CommissionStatus.PRIVILEGIATO];
-    const avgContractValue = (rates[ContractType.GREEN] + rates[ContractType.LIGHT]) / 2;
-
+    // Dynamic calculation based on user input for average value
     const contractsNeededTotal = incomeGap / avgContractValue;
     const dailyContracts = contractsNeededTotal / (daysCalc || 1);
 
-    const dailyAppts = dailyContracts / CONVERSION.APPT_TO_CONTRACT;
-    const dailyContacts = dailyAppts / CONVERSION.CONTACT_TO_APPT;
+    const dailyAppts = dailyContracts / currentRates.APPT_TO_CONTRACT;
+    const dailyContacts = dailyAppts / currentRates.CONTACT_TO_APPT;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-fade-in" onClick={onClose}>
             <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 dark:border-slate-800" onClick={e => e.stopPropagation()}>
-
                 {/* Header */}
                 <div className="bg-gradient-to-r from-indigo-600 to-violet-600 p-6 text-white pb-8 relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl"></div>
@@ -103,7 +116,7 @@ const TargetCalculatorModal: React.FC<TargetCalculatorModalProps> = ({
                     <div className="space-y-6 pt-2">
                         <div>
                             <label className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">
-                                Obiettivo Mensile (€)
+                                Obiettivo guadagni da vendita personale
                             </label>
                             <div className="flex items-center gap-4">
                                 <input
@@ -117,6 +130,27 @@ const TargetCalculatorModal: React.FC<TargetCalculatorModalProps> = ({
                                 />
                                 <div className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-4 py-2 rounded-xl font-bold font-mono min-w-[80px] text-center">
                                     {targetIncome}€
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Average Contract Value Input */}
+                        <div>
+                            <label className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">
+                                Valore Medio Contratto (€)
+                            </label>
+                            <div className="flex items-center gap-4">
+                                <input
+                                    type="range"
+                                    min="10"
+                                    max="100"
+                                    step="0.5"
+                                    value={avgContractValue}
+                                    onChange={(e) => setAvgContractValue(Number(e.target.value))}
+                                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                                />
+                                <div className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 px-4 py-2 rounded-xl font-bold font-mono min-w-[80px] text-center">
+                                    {avgContractValue}€
                                 </div>
                             </div>
                         </div>
@@ -149,6 +183,29 @@ const TargetCalculatorModal: React.FC<TargetCalculatorModalProps> = ({
                     </div>
 
                     <div className="my-8 border-t border-slate-100 dark:border-slate-800"></div>
+
+                    {/* Speed Selector */}
+                    <div className="mb-8">
+                        <label className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">
+                            Livello Esperienza
+                        </label>
+                        <div className="grid grid-cols-3 gap-2">
+                            {(['slow', 'medium', 'fast'] as const).map((s) => (
+                                <button
+                                    key={s}
+                                    onClick={() => setSpeed(s)}
+                                    className={`py-2 px-1 rounded-lg text-xs font-bold transition-all border-2 ${speed === s
+                                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-500/30'
+                                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:border-indigo-300'
+                                        }`}
+                                >
+                                    {s === 'slow' && 'Recluta'}
+                                    {s === 'medium' && 'Veterano'}
+                                    {s === 'fast' && 'Top'}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
 
                     {/* Results Section */}
                     <div className="space-y-3">

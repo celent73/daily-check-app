@@ -11,11 +11,14 @@ const ACHIEVEMENTS_KEY = 'daily-check-app-achievements';
 
 // ---------------------------------------------------------------------------
 // GESTIONE LOG ATTIVITÀ
-// ---------------------------------------------------------------------------
-
 export const loadLogs = async (userId: string | null): Promise<ActivityLog[]> => {
-  const localData = localStorage.getItem(ACTIVITY_KEY);
-  return localData ? JSON.parse(localData) : [];
+  try {
+    const localData = localStorage.getItem(ACTIVITY_KEY);
+    return localData ? JSON.parse(localData) : [];
+  } catch (e) {
+    console.error("Failed to load logs", e);
+    return [];
+  }
 };
 
 export const saveLogs = async (userId: string | null, logs: ActivityLog[]) => {
@@ -31,8 +34,13 @@ export const clearLogs = async (userId: string | null) => {
 // ---------------------------------------------------------------------------
 
 export const loadSettings = async (userId: string | null): Promise<AppSettings | null> => {
-  const localData = localStorage.getItem(SETTINGS_KEY);
-  return localData ? JSON.parse(localData) : null;
+  try {
+    const localData = localStorage.getItem(SETTINGS_KEY);
+    return localData ? JSON.parse(localData) : null;
+  } catch (e) {
+    console.error("Failed to load settings", e);
+    return null;
+  }
 };
 
 export const saveSettings = async (userId: string | null, settings: AppSettings) => {
@@ -44,8 +52,13 @@ export const saveSettings = async (userId: string | null, settings: AppSettings)
 // ---------------------------------------------------------------------------
 
 export const loadUnlockedAchievements = async (userId: string | null): Promise<UnlockedAchievements> => {
-  const localData = localStorage.getItem(ACHIEVEMENTS_KEY);
-  return localData ? JSON.parse(localData) : {};
+  try {
+    const localData = localStorage.getItem(ACHIEVEMENTS_KEY);
+    return localData ? JSON.parse(localData) : {};
+  } catch (e) {
+    console.error("Failed to load achievements", e);
+    return {};
+  }
 };
 
 export const saveUnlockedAchievements = async (userId: string | null, achievements: UnlockedAchievements) => {
