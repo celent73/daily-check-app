@@ -58,22 +58,18 @@ const HistoryListModal: React.FC<HistoryListModalProps> = ({
                 <div className="overflow-y-auto p-4 space-y-3">
 
                     {/* Contracts Breakdown Badge */}
-                    {isContract && (Object.keys(contractBreakdown).length > 0) && (
+                    {isContract && (
                         <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl border border-blue-100 dark:border-blue-800 mb-4">
                             <h4 className="text-xs font-bold text-blue-600 dark:text-blue-300 uppercase mb-2">Riepilogo Contratti</h4>
                             <div className="flex gap-4">
-                                {contractBreakdown.GREEN && (
-                                    <div className="flex flex-col">
-                                        <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">{contractBreakdown.GREEN}</span>
-                                        <span className="text-[10px] font-bold text-slate-500 uppercase">Green</span>
-                                    </div>
-                                )}
-                                {contractBreakdown.LIGHT && (
-                                    <div className="flex flex-col">
-                                        <span className="text-xl font-black text-amber-500 dark:text-amber-400">{contractBreakdown.LIGHT}</span>
-                                        <span className="text-[10px] font-bold text-slate-500 uppercase">Light</span>
-                                    </div>
-                                )}
+                                <div className="flex flex-col">
+                                    <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">{contractBreakdown.GREEN || 0}</span>
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase">Green</span>
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-xl font-black text-amber-500 dark:text-amber-400">{contractBreakdown.LIGHT || 0}</span>
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase">Light</span>
+                                </div>
                             </div>
                         </div>
                     )}

@@ -249,7 +249,6 @@ const AppContent: React.FC = () => {
   }, [addNotification, settings.notificationSettings, effectiveCustomLabels, settings.enableGoals]);
 
   const updateActivityLog = useCallback(async (activity: ActivityType, change: number, dateStr: string, contractType?: ContractType) => {
-    let updatedLogs: ActivityLog[] = [];
     setActivityLogs(prevLogs => {
       const oldProgress = calculateProgressForActivity(prevLogs, activity, settings.commercialMonthStartDay);
       const newLogs = prevLogs.map(log => {
@@ -285,22 +284,18 @@ const AppContent: React.FC = () => {
       const { newlyUnlocked, updatedAchievements } = checkAndUnlockAchievements(newLogs, settings, unlockedAchievements);
       if (newlyUnlocked.length > 0) {
         setUnlockedAchievements(updatedAchievements);
-        // Also save achievements to storage
         saveUnlockedAchievements(userId, updatedAchievements);
-
         newlyUnlocked.forEach((achievement: Achievement) => {
           addNotification(`Traguardo Sbloccato: ${achievement.name}!`, 'success');
         });
       }
-      updatedLogs = newLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      return updatedLogs;
+      const sortedLogs = newLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+      // Perform save immediately with the calculated logs
+      saveLogs(userId, sortedLogs).catch(err => console.error("Failed to auto-save logs:", err));
+
+      return sortedLogs;
     });
-
-    // Wait for state update is redundant as we have local variable, but simple save is fine.
-    // Important: saveLogs inside the setter or after?
-    // With local variable 'updatedLogs' we can save immediately
-    await saveLogs(userId, updatedLogs);
-
   }, [settings, checkAndNotify, unlockedAchievements, addNotification, effectiveGoals, userId]);
 
   const handleUpdateActivity = (activity: ActivityType, change: number, dateStr: string = getTodayDateString()) => {
