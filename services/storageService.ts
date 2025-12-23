@@ -175,7 +175,8 @@ export const saveSettings = async (userId: string | null, settings: AppSettings)
     if (settingsError) console.error("Error saving settings:", settingsError);
 
     // Save Profile (User Profile is inside settings in the App state, but separate table in DB)
-    if (settings.userProfile) {
+    // SAFETY CHECK: Only save profile if it has content. Use specific check to avoid overwriting with empty defaults.
+    if (settings.userProfile && (settings.userProfile.firstName?.trim() || settings.userProfile.lastName?.trim())) {
       const { error: profileError } = await supabase.from('profiles').upsert({
         id: userId,
         first_name: settings.userProfile.firstName,
