@@ -1,11 +1,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = 'https://rpghuvpxubfattkhjnji.supabase.co';
+const supabaseAnonKey = 'sb_publishable_lwqPJLTZ8GU6GjTZIcBkOA_1DU-vzY2';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn("Supabase credentials missing! The app will run in offline/local-only mode.");
-}
-
-export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '');
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
