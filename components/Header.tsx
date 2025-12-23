@@ -174,7 +174,16 @@ const Header: React.FC<HeaderProps> = ({
                         </button>
                     )}
 
-                    {/* Mobile Settings/Menu triggers if needed, currently reusing logic above */}
+                    {/* Mobile Settings/Menu triggers */}
+                    {isLoggedIn && (
+                        <button
+                            onClick={onLogout}
+                            className="md:hidden p-2 rounded-full bg-red-500/20 text-red-100 hover:bg-red-500/40 hover:text-white transition-all border border-red-400/20 mr-1"
+                            aria-label="Logout"
+                        >
+                            <LogoutIcon />
+                        </button>
+                    )}
                     <button
                         onClick={onOpenSettings}
                         className="md:hidden p-2 rounded-full text-white hover:bg-white/20"
