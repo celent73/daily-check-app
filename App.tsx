@@ -248,39 +248,62 @@ const AppContent: React.FC = () => {
     });
   }, [addNotification, settings.notificationSettings, effectiveCustomLabels, settings.enableGoals]);
 
-  const updateActivityLog = useCallback(async (activity: ActivityType, change: number, dateStr: string, contractType?: ContractType) => {
+  const updateActivityLog = useCallback(async (updates: { activity: ActivityType, change: number, contractType?: ContractType }[], dateStr: string) => {
     setActivityLogs(prevLogs => {
-      const oldProgress = calculateProgressForActivity(prevLogs, activity, settings.commercialMonthStartDay);
+      // 1. Calculate Old Progress for all affected activities (Snapshot)
+      const oldProgressMap = new Map<ActivityType, { daily: number, weekly: number, monthly: number }>();
+      updates.forEach(u => {
+        oldProgressMap.set(u.activity, calculateProgressForActivity(prevLogs, u.activity, settings.commercialMonthStartDay));
+      });
+
+      // 2. Apply Updates to Logs
       const newLogs = prevLogs.map(log => {
         if (log.date === dateStr) {
-          return {
+          const updatedLog = {
             ...log,
             counts: { ...log.counts },
             contractDetails: log.contractDetails ? { ...log.contractDetails } : undefined,
             leads: log.leads ? [...log.leads] : undefined
           };
+
+          updates.forEach(u => {
+            const currentCount = updatedLog.counts[u.activity] || 0;
+            updatedLog.counts[u.activity] = Math.max(0, currentCount + u.change);
+
+            if (u.contractType) {
+              if (!updatedLog.contractDetails) updatedLog.contractDetails = {};
+              updatedLog.contractDetails[u.contractType] = Math.max(0, (updatedLog.contractDetails[u.contractType] || 0) + u.change);
+            }
+          });
+          return updatedLog;
         }
         return log;
       });
+
+      // Handle case where log for date doesn't exist yet
       let dateLog = newLogs.find(log => log.date === dateStr);
       if (!dateLog) {
         dateLog = { date: dateStr, counts: {} };
+        updates.forEach(u => {
+          dateLog!.counts[u.activity] = Math.max(0, u.change);
+          if (u.contractType) {
+            if (!dateLog!.contractDetails) dateLog!.contractDetails = {};
+            dateLog!.contractDetails[u.contractType] = Math.max(0, u.change);
+          }
+        });
         newLogs.push(dateLog);
       }
-      const currentCount = dateLog.counts[activity] || 0;
-      const newCount = Math.max(0, currentCount + change);
-      dateLog.counts[activity] = newCount;
 
-      if (contractType) {
-        if (!dateLog.contractDetails) dateLog.contractDetails = {};
-        const currentTypeCount = dateLog.contractDetails[contractType] || 0;
-        dateLog.contractDetails[contractType] = Math.max(0, currentTypeCount + change);
-      }
+      // 3. Post-Update Checks (Notifications & Achievements)
+      updates.forEach(u => {
+        if (u.change > 0 && settings.enableGoals !== false) {
+          const oldP = oldProgressMap.get(u.activity)!;
+          // Calculate new progress dynamically
+          const newP = calculateProgressForActivity(newLogs, u.activity, settings.commercialMonthStartDay);
+          checkAndNotify(oldP, newP, effectiveGoals, u.activity);
+        }
+      });
 
-      const newProgress = calculateProgressForActivity(newLogs, activity, settings.commercialMonthStartDay);
-      if (change > 0) {
-        checkAndNotify(oldProgress, newProgress, effectiveGoals, activity);
-      }
       const { newlyUnlocked, updatedAchievements } = checkAndUnlockAchievements(newLogs, settings, unlockedAchievements);
       if (newlyUnlocked.length > 0) {
         setUnlockedAchievements(updatedAchievements);
@@ -289,34 +312,38 @@ const AppContent: React.FC = () => {
           addNotification(`Traguardo Sbloccato: ${achievement.name}!`, 'success');
         });
       }
+
       const sortedLogs = newLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-      // Perform save immediately with the calculated logs
+      // Perform ONE save for the batch
       saveLogs(userId, sortedLogs).catch(err => console.error("Failed to auto-save logs:", err));
 
       return sortedLogs;
     });
   }, [settings, checkAndNotify, unlockedAchievements, addNotification, effectiveGoals, userId]);
-
   const handleUpdateActivity = (activity: ActivityType, change: number, dateStr: string = getTodayDateString()) => {
-    updateActivityLog(activity, change, dateStr);
+    updateActivityLog([{ activity, change }], dateStr);
   };
 
   const handleContractSelection = (type: ContractType) => {
     const dateStr = selectedInputDate.toISOString().split('T')[0];
 
-    // Log the main contract
-    updateActivityLog(ActivityType.NEW_CONTRACTS, 1, dateStr, type);
+    // Create batch updates
+    const updates: { activity: ActivityType, change: number, contractType?: ContractType }[] = [];
 
-    // Automation: If Green Contract, also add Family Utility
+    // 1. Add Main Contract
+    updates.push({ activity: ActivityType.NEW_CONTRACTS, change: 1, contractType: type });
+
+    // 2. Automation: If Green Contract, also add Family Utility
     if (type === ContractType.GREEN) {
-      // Use a small timeout to ensure sequential processing or just call it directly
-      // Calling directly should be fine as state updates are batched/managed
-      updateActivityLog(ActivityType.NEW_FAMILY_UTILITY, 1, dateStr);
+      updates.push({ activity: ActivityType.NEW_FAMILY_UTILITY, change: 1 });
       addNotification("Registrato: Contratto Green + Family Utility Automatico! 🌱⚡", "success");
     } else {
       addNotification("Contratto registrato e guadagno calcolato!", "success");
     }
+
+    // Execute batch update (Atomic Save)
+    updateActivityLog(updates, dateStr);
 
     setIsContractSelectorModalOpen(false);
   };
