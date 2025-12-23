@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ActivityType, VisionBoardData, NextAppointment, ActivityLog } from '../types';
 import { ACTIVITY_LABELS, ACTIVITY_COLORS, activityIcons } from '../constants';
 import { formatItalianDate, getCommercialMonthString, getDaysUntilCommercialMonthEnd, getCommercialMonthProgress } from '../utils/dateUtils';
-import EarningsWidget from './EarningsWidget';
-import VisionBoardWidget from './VisionBoardWidget';
+import PersonalSalesWidget from './PersonalSalesWidget';
 import PowerRing from './PowerRing';
 import HistoryListModal from './HistoryListModal';
 
@@ -273,33 +272,13 @@ const ActivityInput: React.FC<ActivityInputProps> = ({
                     </button>
                 </div>
 
-                {/* Earnings Widget */}
-                <EarningsWidget dailyEarnings={dailyEarnings} monthlyEarnings={monthlyEarnings} />
-
-                {/* Vision Board Widget */}
-                {visionBoardData?.enabled ? (
-                    <VisionBoardWidget
-                        currentEarnings={monthlyEarnings}
-                        targetAmount={visionBoardData.targetAmount}
-                        imageData={visionBoardData.imageData}
-                        title={visionBoardData.title}
-                        enabled={visionBoardData.enabled}
-                        onOpenSettings={onOpenVisionBoardSettings}
-                    />
-                ) : (
-                    <div className="mb-6 bg-slate-50 dark:bg-black border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-2xl p-4 text-center">
-                        <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
-                            Il tuo "Perché"
-                        </p>
-                        <button
-                            type="button"
-                            onClick={onOpenVisionBoardSettings}
-                            className="w-full py-2 bg-white dark:bg-black border-2 border-slate-200 dark:border-slate-800 hover:border-purple-500 text-purple-600 dark:text-purple-400 text-sm font-bold rounded-xl shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2"
-                        >
-                            <span>🎯</span> Attiva Vision Board
-                        </button>
-                    </div>
-                )}
+                {/* Personal Sales Unified Widget */}
+                <PersonalSalesWidget
+                    dailyEarnings={dailyEarnings}
+                    monthlyEarnings={monthlyEarnings}
+                    visionBoardData={visionBoardData}
+                    onOpenSettings={onOpenVisionBoardSettings}
+                />
 
                 <div className="bg-slate-50/80 dark:bg-black p-4 rounded-2xl border-2 border-slate-200 dark:border-slate-800 shadow-inner">
                     <div className="flex justify-between items-end mb-2">

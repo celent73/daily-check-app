@@ -304,9 +304,21 @@ const AppContent: React.FC = () => {
 
   const handleContractSelection = (type: ContractType) => {
     const dateStr = selectedInputDate.toISOString().split('T')[0];
+
+    // Log the main contract
     updateActivityLog(ActivityType.NEW_CONTRACTS, 1, dateStr, type);
+
+    // Automation: If Green Contract, also add Family Utility
+    if (type === ContractType.GREEN) {
+      // Use a small timeout to ensure sequential processing or just call it directly
+      // Calling directly should be fine as state updates are batched/managed
+      updateActivityLog(ActivityType.NEW_FAMILY_UTILITY, 1, dateStr);
+      addNotification("Registrato: Contratto Green + Family Utility Automatico! 🌱⚡", "success");
+    } else {
+      addNotification("Contratto registrato e guadagno calcolato!", "success");
+    }
+
     setIsContractSelectorModalOpen(false);
-    addNotification("Contratto registrato e guadagno calcolato!", "success");
   };
 
   const handleSaveSettings = (newSettings: AppSettings) => {
