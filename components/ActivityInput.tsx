@@ -1,14 +1,15 @@
-
 import React, { useState, useEffect } from 'react';
-import { ActivityType, VisionBoardData, NextAppointment } from '../types';
+import { ActivityType, VisionBoardData, NextAppointment, ActivityLog } from '../types';
 import { ACTIVITY_LABELS, ACTIVITY_COLORS, activityIcons } from '../constants';
 import { formatItalianDate, getCommercialMonthString, getDaysUntilCommercialMonthEnd, getCommercialMonthProgress } from '../utils/dateUtils';
 import EarningsWidget from './EarningsWidget';
 import VisionBoardWidget from './VisionBoardWidget';
 import PowerRing from './PowerRing';
+import HistoryListModal from './HistoryListModal';
 
 interface ActivityInputProps {
     todayCounts?: { [key in ActivityType]?: number };
+    currentLog?: ActivityLog;
     monthTotals?: { [key in ActivityType]?: number };
     onUpdateActivity: (activity: ActivityType, change: number, dateStr: string) => void;
     onOpenPowerMode: () => void;
@@ -94,6 +95,7 @@ const ShareIcon = () => (
 
 const ActivityInput: React.FC<ActivityInputProps> = ({
     todayCounts,
+    currentLog,
     monthTotals,
     onUpdateActivity,
     onOpenPowerMode,
@@ -116,6 +118,8 @@ const ActivityInput: React.FC<ActivityInputProps> = ({
     onOpenVoiceMode,
     onOpenTargetCalculator
 }) => {
+
+    const [selectedActivityForDetails, setSelectedActivityForDetails] = useState<ActivityType | null>(null);
 
     const selectedDateFormatted = formatItalianDate(selectedDate);
     const commercialMonthStr = getCommercialMonthString(selectedDate, commercialMonthStartDay);
@@ -141,6 +145,10 @@ const ActivityInput: React.FC<ActivityInputProps> = ({
             onDateChange(new Date(e.target.value));
         }
     }
+
+    const handleOpenHistory = (activity: ActivityType) => {
+        setSelectedActivityForDetails(activity);
+    };
 
     const handlePlusClick = (e: React.MouseEvent, activity: ActivityType) => {
         e.stopPropagation();
@@ -324,7 +332,11 @@ const ActivityInput: React.FC<ActivityInputProps> = ({
                             style={{ borderColor: `${color}30` }}
                         >
                             <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
+                                {/* Clickable Left Area to Open History */}
+                                <div
+                                    className="flex items-center gap-3 cursor-pointer p-1 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 transition-colors flex-1"
+                                    onClick={() => handleOpenHistory(activity)}
+                                >
                                     <div className="relative">
                                         <PowerRing
                                             // Let's us count % 10 * 10 to make it fill up every 10?
@@ -368,9 +380,14 @@ const ActivityInput: React.FC<ActivityInputProps> = ({
                                         <MinusIcon />
                                     </button>
 
-                                    <span className="w-8 text-center font-black text-lg text-slate-800 dark:text-white">
+                                    {/* Count also opens history */}
+                                    <button
+                                        type="button"
+                                        onClick={() => handleOpenHistory(activity)}
+                                        className="w-8 text-center font-black text-lg text-slate-800 dark:text-white hover:text-blue-600 transition-colors"
+                                    >
                                         {count}
-                                    </span>
+                                    </button>
 
                                     <button
                                         type="button"
@@ -389,6 +406,14 @@ const ActivityInput: React.FC<ActivityInputProps> = ({
                     );
                 })}
             </div>
+
+            <HistoryListModal
+                isOpen={!!selectedActivityForDetails}
+                onClose={() => setSelectedActivityForDetails(null)}
+                activityType={selectedActivityForDetails}
+                activityLog={currentLog}
+                customLabel={selectedActivityForDetails ? (customLabels?.[selectedActivityForDetails] || ACTIVITY_LABELS[selectedActivityForDetails]) : ''}
+            />
         </div>
     );
 };

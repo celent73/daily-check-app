@@ -91,6 +91,7 @@ const AppContent: React.FC = () => {
 
   // Use user.id if logged in, otherwise null (local mode)
   const userId = user?.id || null;
+  const isAnonymous = !user;
 
   useEffect(() => {
     // App Mounted
@@ -530,6 +531,7 @@ const AppContent: React.FC = () => {
             <div className="lg:col-span-1">
               <ActivityInput
                 todayCounts={selectedDateLog?.counts}
+                currentLog={selectedDateLog}
                 monthTotals={commercialMonthTotals}
                 onUpdateActivity={handleUpdateActivity}
                 onOpenPowerMode={() => setIsPowerModeOpen(true)}
