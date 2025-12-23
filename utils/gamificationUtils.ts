@@ -4,55 +4,47 @@ export const calculateCurrentStreak = (logs: ActivityLog[]): number => {
     if (!logs || logs.length === 0) return 0;
 
     // Sort logs by date descending (newest first)
-    const sortedLogs = [...logs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    // Ensure we filter out logs with NO activity just in case
+    const sortedLogs = [...logs]
+        .filter(log => Object.values(log.counts).some(c => c > 0))
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    if (sortedLogs.length === 0) return 0;
 
     let streak = 0;
 
-    // Normalize date to YYYY-MM-DD for comparison
-    const toDateString = (date: Date) => date.toISOString().split('T')[0];
-    const today = toDateString(new Date());
-    const yesterday = toDateString(new Date(Date.now() - 86400000));
-
-    // Helper to check if a log has any activity
-    const hasActivity = (log: ActivityLog) => {
-        return Object.values(log.counts).some(count => count > 0);
+    // Use UTC date handling to align with App's storage (toISOString)
+    const getUTCDate = (dateStr: string) => {
+        const d = new Date(dateStr);
+        // Normalize to midnight UTC to ensure diffDays works on whole days
+        return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
     };
 
-    // Find today's log
-    const todayLog = sortedLogs.find(log => log.date === today);
-    const yesterdayLog = sortedLogs.find(log => log.date === yesterday);
+    const todayDate = new Date();
+    const todayUTC = Date.UTC(todayDate.getUTCFullYear(), todayDate.getUTCMonth(), todayDate.getUTCDate());
 
-    // If today has activity, start counting from today
-    // If today has NO activity, but yesterday did, streak is still alive (start from yesterday)
-    // If neither has activity, streak is 0
+    // Check first log
+    const lastLogDate = getUTCDate(sortedLogs[0].date);
+    const diffFromToday = Math.round((todayUTC - lastLogDate) / (1000 * 60 * 60 * 24));
 
-    let currentDateToCheck: string | null = null;
-
-    if (todayLog && hasActivity(todayLog)) {
-        streak = 1;
-        currentDateToCheck = yesterday;
-    } else if (yesterdayLog && hasActivity(yesterdayLog)) {
-        streak = 1;
-        currentDateToCheck = toDateString(new Date(Date.now() - 86400000 * 2)); // Check day before yesterday
-    } else {
-        return 0;
+    // The most recent log MUST be either Today (0 days ago) or Yesterday (1 day ago) to keep the streak alive
+    if (diffFromToday > 1) {
+        return 0; // Streak broken
     }
 
-    // Iterate backwards logic
-    // We need a map for quick lookup
-    const logsMap = new Map<string, ActivityLog>();
-    sortedLogs.forEach(log => logsMap.set(log.date, log));
+    streak = 1;
 
-    while (currentDateToCheck) {
-        const log = logsMap.get(currentDateToCheck);
-        if (log && hasActivity(log)) {
+    // Iterate through the rest
+    for (let i = 0; i < sortedLogs.length - 1; i++) {
+        const current = getUTCDate(sortedLogs[i].date);
+        const next = getUTCDate(sortedLogs[i + 1].date);
+
+        const diffDesc = Math.round((current - next) / (1000 * 60 * 60 * 24));
+
+        if (diffDesc === 1) {
             streak++;
-            // Move back one day
-            const d = new Date(currentDateToCheck);
-            d.setDate(d.getDate() - 1);
-            currentDateToCheck = toDateString(d);
         } else {
-            break;
+            break; // Gap found, streak ends
         }
     }
 

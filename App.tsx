@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ActivityLog, ActivityType, AppSettings, Notification, NotificationVariant, UnlockedAchievements, Achievement, Theme, CommissionStatus, ContractType, VisionBoardData, NextAppointment, Qualification } from './types';
-import { loadLogs, saveLogs, loadSettings, saveSettings, loadUnlockedAchievements, saveUnlockedAchievements, clearLogs } from './services/storageService';
+import { loadLogs, saveLogs, loadSettings, saveSettings, loadUnlockedAchievements, saveUnlockedAchievements, clearLogs, syncLocalDataToCloud } from './services/storageService';
 import { getTodayDateString, calculateProgressForActivity, getCommercialMonthRange } from './utils/dateUtils';
 import Header from './components/Header';
 import ActivityInput from './components/ActivityInput';
@@ -22,13 +22,17 @@ import MonthlyReportModal from './components/MonthlyReportModal';
 import ContractSelectorModal from './components/ContractSelectorModal';
 import VisionBoardModal from './components/VisionBoardModal';
 import AddAppointmentModal from './components/AddAppointmentModal';
-import TargetCalculatorModal from './components/TargetCalculatorModal'; // Added
+import TargetCalculatorModal from './components/TargetCalculatorModal';
 import DetailedGuideModal from './components/DetailedGuideModal';
 import LeadCaptureModal from './components/LeadCaptureModal';
 import CalendarModal from './components/CalendarModal';
 
 import VoiceSpeedMode from './components/VoiceSpeedMode';
 import TeamLeaderboardModal from './components/TeamLeaderboardModal';
+
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import AuthModal from './components/AuthModal';
+import { supabase } from './supabaseClient';
 
 const DEFAULT_SETTINGS: AppSettings = {
   userProfile: {
@@ -82,7 +86,12 @@ const NotificationItem: React.FC<{ notification: Notification; onClose: () => vo
   );
 };
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
+  const { user, signOut, loading: authLoading } = useAuth();
+
+  // Use user.id if logged in, otherwise null (local mode)
+  const userId = user?.id || null;
+
   useEffect(() => {
     // App Mounted
   }, []);
@@ -102,7 +111,9 @@ const App: React.FC = () => {
   const [isAddAppointmentModalOpen, setIsAddAppointmentModalOpen] = useState(false);
   const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
-  const [isTargetCalculatorModalOpen, setIsTargetCalculatorModalOpen] = useState(false); // Added
+  const [isTargetCalculatorModalOpen, setIsTargetCalculatorModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
 
   // New "WOW" features state
   const [isPowerModeOpen, setIsPowerModeOpen] = useState(false);
@@ -121,8 +132,6 @@ const App: React.FC = () => {
   const [isLocked, setIsLocked] = useState(false); // Always unlocked
   const [remainingTrialDays] = useState<number | null>(null); // No trial needed
   const [isPremium, setIsPremium] = useState(true); // Always Premium
-  const isAnonymous = false;
-
   const [isInitializing, setIsInitializing] = useState(true);
 
   // Achievements State
@@ -160,36 +169,43 @@ const App: React.FC = () => {
 
   const loadLocalData = useCallback(async () => {
     const [loadedLogs, loadedSettings, loadedAchievements] = await Promise.all([
-      loadLogs(null),
-      loadSettings(null),
-      loadUnlockedAchievements(null),
+      loadLogs(userId),
+      loadSettings(userId),
+      loadUnlockedAchievements(userId),
     ]);
     setActivityLogs(loadedLogs);
-    setSettings(loadedSettings ? { ...DEFAULT_SETTINGS, ...loadedSettings } : DEFAULT_SETTINGS);
+
+    let mergedSettings = DEFAULT_SETTINGS;
+    if (loadedSettings) {
+      mergedSettings = { ...DEFAULT_SETTINGS, ...loadedSettings };
+    }
+
+    // If user is logged in, their profile comes from DB not generic settings, usually handled inside loadSettings or logic above
+    // But if just logged in and profile empty, take default
+    setSettings(mergedSettings);
+
     setUnlockedAchievements(loadedAchievements);
     setIsInitializing(false);
-  }, []);
+  }, [userId]); // Depend on userId to reload when auth changes
 
-  // Load local data on init
+  // Load local data on init or auth change
   useEffect(() => {
-    loadLocalData();
-  }, [loadLocalData]);
+    if (!authLoading) {
+      loadLocalData();
+    }
+  }, [loadLocalData, authLoading]);
 
   // Persist settings on change
   useEffect(() => {
-    if (!isInitializing) {
-      saveSettings(null, settings);
+    if (!isInitializing && !authLoading) {
+      saveSettings(userId, settings);
     }
-  }, [settings, isInitializing]);
-
-
+  }, [settings, isInitializing, authLoading, userId]);
 
   const toggleTheme = () => {
     const newTheme: Theme = settings.theme === 'light' ? 'dark' : 'light';
     setSettings((prev: AppSettings) => ({ ...prev, theme: newTheme }));
   };
-
-
 
   const checkAndNotify = useCallback((
     oldProgress: { daily: number, weekly: number, monthly: number },
@@ -225,7 +241,8 @@ const App: React.FC = () => {
     });
   }, [addNotification, settings.notificationSettings, effectiveCustomLabels, settings.enableGoals]);
 
-  const updateActivityLog = useCallback((activity: ActivityType, change: number, dateStr: string, contractType?: ContractType) => {
+  const updateActivityLog = useCallback(async (activity: ActivityType, change: number, dateStr: string, contractType?: ContractType) => {
+    let updatedLogs: ActivityLog[] = [];
     setActivityLogs(prevLogs => {
       const oldProgress = calculateProgressForActivity(prevLogs, activity, settings.commercialMonthStartDay);
       const newLogs = prevLogs.map(log => {
@@ -261,13 +278,23 @@ const App: React.FC = () => {
       const { newlyUnlocked, updatedAchievements } = checkAndUnlockAchievements(newLogs, settings, unlockedAchievements);
       if (newlyUnlocked.length > 0) {
         setUnlockedAchievements(updatedAchievements);
+        // Also save achievements to storage
+        saveUnlockedAchievements(userId, updatedAchievements);
+
         newlyUnlocked.forEach((achievement: Achievement) => {
           addNotification(`Traguardo Sbloccato: ${achievement.name}!`, 'success');
         });
       }
-      return newLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      updatedLogs = newLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      return updatedLogs;
     });
-  }, [settings, checkAndNotify, unlockedAchievements, addNotification, effectiveGoals]);
+
+    // Wait for state update is redundant as we have local variable, but simple save is fine.
+    // Important: saveLogs inside the setter or after?
+    // With local variable 'updatedLogs' we can save immediately
+    await saveLogs(userId, updatedLogs);
+
+  }, [settings, checkAndNotify, unlockedAchievements, addNotification, effectiveGoals, userId]);
 
   const handleUpdateActivity = (activity: ActivityType, change: number, dateStr: string = getTodayDateString()) => {
     updateActivityLog(activity, change, dateStr);
@@ -281,7 +308,7 @@ const App: React.FC = () => {
   };
 
   const handleSaveSettings = (newSettings: AppSettings) => {
-    setSettings(newSettings);
+    setSettings(newSettings); // This triggers existing useEffect to save
   };
 
   const handleSaveVisionBoard = (visionData: VisionBoardData) => {
@@ -294,7 +321,7 @@ const App: React.FC = () => {
   };
 
   const handleClearAllData = async () => {
-    await clearLogs(null);
+    await clearLogs(userId);
     setActivityLogs([]);
     setDeleteDataModalOpen(false);
     addNotification('Tutto lo storico delle attività è stato cancellato.', 'success');
@@ -304,13 +331,18 @@ const App: React.FC = () => {
     const { start, end } = getCommercialMonthRange(new Date(), settings.commercialMonthStartDay);
     const startTime = start.getTime();
     const endTime = end.getTime();
+
+    let newLogs: ActivityLog[] = [];
     setActivityLogs(prevLogs => {
-      const filteredLogs = prevLogs.filter(log => {
+      newLogs = prevLogs.filter(log => {
         const logTime = new Date(log.date).getTime();
         return logTime < startTime || logTime > endTime;
       });
-      return filteredLogs;
+      return newLogs;
     });
+
+    saveLogs(userId, newLogs);
+
     setDeleteDataModalOpen(false);
     addNotification('Dati del mese commerciale corrente eliminati.', 'success');
   };
@@ -333,6 +365,8 @@ const App: React.FC = () => {
 
   const handleSaveLead = (leadData: { name: string; phone: string; note: string }) => {
     const dateStr = selectedInputDate.toISOString().split('T')[0];
+
+    let updatedLogs: ActivityLog[] = [];
     setActivityLogs(prevLogs => {
       const newLogs = [...prevLogs];
       let dateLog = newLogs.find(log => log.date === dateStr);
@@ -350,8 +384,12 @@ const App: React.FC = () => {
       });
       const currentCount = dateLog.counts[leadCaptureType] || 0;
       dateLog.counts[leadCaptureType] = currentCount + 1;
-      return newLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      updatedLogs = newLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      return updatedLogs;
     });
+
+    saveLogs(userId, updatedLogs);
+
     setIsLeadCaptureModalOpen(false);
     addNotification(`${leadCaptureType === ActivityType.APPOINTMENTS ? 'Appuntamento' : 'Contatto'} salvato con successo!`, 'success');
   };
@@ -365,6 +403,18 @@ const App: React.FC = () => {
       }
     }));
     addNotification(`Qualifica aggiornata a: ${newQualification} 🚀`, 'success');
+  };
+
+  // Login Success Handler (Trigger Data Sync)
+  const handleLoginSuccess = async () => {
+    // We actually need the user ID. 
+    // For this version:
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      await syncLocalDataToCloud(session.user.id);
+      addNotification("Sincronizzazione dati completata!", "success");
+      loadLocalData(); // Reload merged data
+    }
   };
 
   const COMMISSION_RATES = useMemo(() => {
@@ -399,7 +449,7 @@ const App: React.FC = () => {
 
   const selectedDateStr = selectedInputDate.toISOString().split('T')[0];
   const selectedDateLog = activityLogs.find(log => log.date === selectedDateStr);
-  const careerStatus = useMemo(() => calculateCareerStatus(activityLogs), [activityLogs]);
+  const careerStatus = useMemo(() => calculateCareerStatus(activityLogs, settings.userProfile.currentQualification), [activityLogs, settings.userProfile.currentQualification]);
   const commercialMonthTotals = useMemo(() => {
     const range = getCommercialMonthRange(selectedInputDate, settings.commercialMonthStartDay);
     const totals: { [key in ActivityType]?: number } = {};
@@ -417,7 +467,7 @@ const App: React.FC = () => {
 
   const streak = useMemo(() => calculateCurrentStreak(activityLogs), [activityLogs]);
 
-  if (isInitializing) {
+  if (isInitializing || authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900">
         <div className="text-center">
@@ -443,7 +493,20 @@ const App: React.FC = () => {
       <div className="min-h-screen text-slate-800 dark:text-slate-100 transition-colors duration-300">
         <Header
           userProfile={settings.userProfile}
-          onOpenSettings={() => handleOpenSettings('profile')}
+          isLoggedIn={!!user}
+          onOpenSettings={() => {
+            // If not logged in, maybe show login modal? 
+            // Actually Settings is accessible to guests too
+            if (!user && !settings.userProfile.firstName) {
+              // If user is totally anon/empty, open auth
+              setIsAuthModalOpen(true);
+            } else {
+              handleOpenSettings('profile');
+            }
+          }}
+          onLogout={signOut}
+          onLogin={() => setIsAuthModalOpen(true)}
+
           onOpenDeleteDataModal={() => setDeleteDataModalOpen(true)}
           careerStatus={careerStatus}
           streak={streak}
@@ -494,12 +557,18 @@ const App: React.FC = () => {
                 customLabels={effectiveCustomLabels}
                 onUpdateQualification={handleUpdateQualification}
               />
-              <CareerStatus activityLogs={activityLogs} />
+              <CareerStatus activityLogs={activityLogs} userProfile={settings.userProfile} />
             </div>
           </div>
         </main>
 
         {/* Modals */}
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onClose={() => setIsAuthModalOpen(false)}
+          onLoginSuccess={handleLoginSuccess}
+        />
+
         <SettingsModal
           isOpen={isSettingsModalOpen}
           onClose={() => setSettingsModalOpen(false)}
@@ -616,6 +685,14 @@ const App: React.FC = () => {
         />
       </div>
     </>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 };
 

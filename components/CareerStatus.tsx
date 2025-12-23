@@ -1,10 +1,11 @@
 
 import React from 'react';
-import { ActivityLog } from '../types';
+import { ActivityLog, UserProfile, Qualification } from '../types';
 import { calculateCareerStatus } from '../utils/careerUtils';
 
 interface CareerStatusProps {
   activityLogs: ActivityLog[];
+  userProfile?: UserProfile;
 }
 
 const TrophyIcon = () => (
@@ -14,15 +15,21 @@ const TrophyIcon = () => (
 );
 
 
-const CareerStatus: React.FC<CareerStatusProps> = ({ activityLogs }) => {
-  const status = calculateCareerStatus(activityLogs);
+const CareerStatus: React.FC<CareerStatusProps> = ({ activityLogs, userProfile }) => {
+  // Use the manual qualification if set, otherwise calculate automatically
+  const status = calculateCareerStatus(activityLogs, userProfile?.currentQualification);
 
   const progressBarClass = status.specialStatus === 'family_pro'
     ? 'bg-gradient-to-r from-emerald-500 to-green-600'
     : 'bg-gradient-to-r from-amber-400 to-amber-600';
 
   return (
-    <div className="bg-white dark:bg-black p-6 rounded-2xl shadow-lg transition-colors duration-300 border border-slate-200 dark:border-slate-800">
+    <div className="bg-white dark:bg-black p-6 rounded-2xl shadow-lg transition-colors duration-300 border border-slate-200 dark:border-slate-800 relative overflow-hidden">
+      {status.isManualOverride && (
+        <div className="absolute top-0 right-0 bg-blue-100 text-blue-600 text-[10px] font-bold px-2 py-1 rounded-bl-lg dark:bg-blue-900/30 dark:text-blue-300">
+          MANUALE
+        </div>
+      )}
       <div className="flex items-center mb-4">
         <TrophyIcon />
         <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Status Carriera</h2>
@@ -32,8 +39,8 @@ const CareerStatus: React.FC<CareerStatusProps> = ({ activityLogs }) => {
         <div>
           <p className="text-slate-500 dark:text-slate-400">Livello Attuale</p>
           <p className={`text-4xl font-bold bg-gradient-to-r ${status.specialStatus === 'family_pro'
-              ? 'from-pink-600 to-rose-800 dark:from-pink-400 dark:to-rose-600'
-              : 'from-blue-500 to-cyan-500 dark:from-blue-400 dark:to-cyan-400'
+            ? 'from-pink-600 to-rose-800 dark:from-pink-400 dark:to-rose-600'
+            : 'from-blue-500 to-cyan-500 dark:from-blue-400 dark:to-cyan-400'
             } text-transparent bg-clip-text`}>{status.currentLevel.name}</p>
           {status.currentLevel.name === 'Family Utility' && status.totalContracts < 10 && (
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -45,7 +52,7 @@ const CareerStatus: React.FC<CareerStatusProps> = ({ activityLogs }) => {
         <div>
           <div className="flex justify-between items-end mb-1">
             <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
-              {status.isMaxLevel ? 'Hai raggiunto il livello massimo!' : 'Progresso al prossimo livello'}
+              {status.isMaxLevel ? 'Hai raggiunto il livello massimo (per ora)!' : 'Progresso al prossimo livello'}
             </span>
             {!status.isMaxLevel && status.nextLevel && (
               <span className="text-xs text-slate-500 dark:text-slate-400">

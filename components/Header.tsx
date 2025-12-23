@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { UserProfile, Theme } from '../types';
 import { CareerStatusInfo } from '../utils/careerUtils';
@@ -11,12 +10,16 @@ interface HeaderProps {
     isPremium: boolean;
     remainingTrialDays: number | null;
     onOpenPaywall: () => void;
-    isAnonymous: boolean;
     toggleTheme: () => void;
     currentTheme: Theme;
     onOpenMonthlyReport: () => void;
     onOpenGuide: () => void;
     streak: number;
+    onOpenTeamChallenge: () => void;
+    // Auth Props
+    isLoggedIn?: boolean;
+    onLogin?: () => void;
+    onLogout?: () => void;
 }
 
 const StreakBadge = ({ count }: { count: number }) => {
@@ -24,11 +27,12 @@ const StreakBadge = ({ count }: { count: number }) => {
     return (
         <div className="flex items-center gap-1 bg-gradient-to-tr from-orange-500 to-red-600 text-white pl-2 pr-3 py-1 rounded-full text-xs font-bold shadow-lg shadow-orange-500/20 border border-orange-400/20 animate-fade-in">
             <span className="text-sm animate-pulse">🔥</span>
-            <span>{count} {count === 1 ? 'giiorno' : 'giorni'}</span>
+            <span>{count} {count === 1 ? 'giorno' : 'giorni'}</span>
         </div>
     );
 };
 
+// Icons (kept same as before, added Logout/Login)
 const QuestionMarkIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white drop-shadow-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -40,35 +44,35 @@ const SettingsIcon = ({ className }: { className?: string }) => (
         <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
     </svg>
 );
-
 const TrashIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
     </svg>
 );
-
 const SunIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-300 drop-shadow-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
     </svg>
 );
-
 const MoonIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white drop-shadow-sm" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
     </svg>
 );
-
 const DocumentIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
         <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
         <path d="M9 11a1 1 0 100-2 1 1 0 000 2zM9 14a1 1 0 100-2 1 1 0 000 2zM9 17a1 1 0 100-2 1 1 0 000 2zM12 17a1 1 0 100-2 1 1 0 000 2zM12 14a1 1 0 100-2 1 1 0 000 2z" />
     </svg>
 );
+const LogoutIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+    </svg>
+);
 
 const InstallButton = () => {
     const [deferredPrompt, setDeferredPrompt] = React.useState<any>(null);
-
     React.useEffect(() => {
         const handler = (e: any) => {
             e.preventDefault();
@@ -77,123 +81,105 @@ const InstallButton = () => {
         window.addEventListener('beforeinstallprompt', handler);
         return () => window.removeEventListener('beforeinstallprompt', handler);
     }, []);
-
     const handleInstallClick = async () => {
         if (!deferredPrompt) return;
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === 'accepted') {
-            setDeferredPrompt(null);
-        }
+        if (outcome === 'accepted') setDeferredPrompt(null);
     };
-
     if (!deferredPrompt) return null;
-
     return (
         <button
             onClick={handleInstallClick}
             className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-pink-500 to-rose-500 shadow-lg shadow-pink-500/30 hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 animate-pulse-slow"
         >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
             <span className="hidden sm:inline">Installa App</span>
+            <span className="sm:hidden">↓</span>
         </button>
     );
 };
+
 const Header: React.FC<HeaderProps> = ({
-    userProfile, onOpenSettings, onOpenDeleteDataModal, careerStatus, streak, isPremium, remainingTrialDays, onOpenPaywall, isAnonymous, toggleTheme, currentTheme, onOpenMonthlyReport, onOpenGuide, onOpenTeamChallenge
+    userProfile, onOpenSettings, onOpenDeleteDataModal, careerStatus, streak, isPremium, remainingTrialDays, onOpenPaywall, toggleTheme, currentTheme, onOpenMonthlyReport, onOpenGuide, onOpenTeamChallenge,
+    isLoggedIn, onLogin, onLogout
 }) => {
 
     return (
-        // MODIFICATO: Gradiente molto più marcato (from-blue-800) e vibrante
         <header className="bg-gradient-to-r from-blue-800 via-blue-600 to-cyan-400 dark:from-slate-900 dark:via-blue-900 dark:to-slate-900 shadow-xl shadow-blue-900/20 sticky top-0 z-50 transition-all duration-500 border-b border-blue-500/30">
-            <div className="absolute inset-0 bg-white/5 dark:bg-black/20 backdrop-blur-[1px]"></div> {/* Overlay for texture/depth */}
+            <div className="absolute inset-0 bg-white/5 dark:bg-black/20 backdrop-blur-[1px]"></div>
 
             <div className="container mx-auto px-4 md:px-6 py-4 flex justify-between items-center relative z-10">
                 <div className="flex items-center gap-3">
                     <h1 className="text-2xl md:text-3xl font-black flex items-center gap-3 tracking-tight text-white drop-shadow-md cursor-default">
                         <div className="bg-white/20 p-1.5 rounded-xl backdrop-blur-sm border border-white/30 shadow-inner">
-                            <img src="/app-logo.png" className="h-7 w-7 drop-shadow-sm object-contain" alt="Daily Check Logo" />
+                            <img src="/app-logo.png" className="h-7 w-7 drop-shadow-sm object-contain" alt="Logo" />
                         </div>
-                        <span style={{ textShadow: '0 2px 4px rgba(0,0,0,0.1)' }} className="hidden sm:inline">
+                        <span className="hidden sm:inline" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
                             Daily Check
                         </span>
                     </h1>
-                    {/* STREAK BADGE (Mobile optimized: always visible if active) */}
                     <StreakBadge count={streak} />
                 </div>
 
-                <div className="flex items-center gap-2 sm:gap-4">
-                    {/* INSTALL BUTTON (PWA) */}
+                <div className="flex items-center gap-2 sm:gap-3">
                     <InstallButton />
 
-                    {/* Guide Button */}
-                    <button
-                        onClick={onOpenGuide}
-                        className="p-2 rounded-full text-white/90 hover:bg-white/20 hover:scale-110 active:scale-95 transition-all duration-300"
-                        aria-label="Guida utente"
-                    >
-                        <QuestionMarkIcon />
-                    </button>
+                    <div className="flex gap-1 bg-black/20 rounded-full p-1 backdrop-blur-md border border-white/10">
+                        <button onClick={toggleTheme} className="p-2 rounded-full text-white hover:bg-white/20 transition-all" aria-label="Tema">
+                            {currentTheme === 'light' ? <MoonIcon /> : <SunIcon />}
+                        </button>
+                        <button onClick={onOpenGuide} className="p-2 rounded-full text-white hover:bg-white/20 transition-all" aria-label="Guida">
+                            <QuestionMarkIcon />
+                        </button>
+                        <button onClick={onOpenMonthlyReport} className="p-2 rounded-full text-white hover:bg-white/20 transition-all" aria-label="Report">
+                            <DocumentIcon />
+                        </button>
+                    </div>
 
-                    {/* Theme Toggle */}
-                    <button
-                        onClick={toggleTheme}
-                        className="p-2 rounded-full text-white/90 hover:bg-white/20 hover:scale-110 active:scale-95 transition-all duration-300"
-                        aria-label={currentTheme === 'light' ? 'Attiva modalità scura' : 'Attiva modalità chiara'}
-                    >
-                        {currentTheme === 'light' ? <MoonIcon /> : <SunIcon />}
-                    </button>
 
-                    <button
-                        onClick={onOpenMonthlyReport}
-                        className="p-2 rounded-full text-white/90 hover:bg-white/20 hover:scale-110 active:scale-95 transition-all duration-300 flex items-center justify-center"
-                        aria-label="Report Mensile"
-                        title="Genera Report Mensile"
-                    >
-                        <DocumentIcon />
-                    </button>
+                    {isLoggedIn ? (
+                        <div className="hidden md:flex items-center gap-3 pl-2 border-l border-white/20">
+                            <div className="flex flex-col items-end leading-tight">
+                                <span className="text-sm font-bold text-white shadow-sm">
+                                    {userProfile.firstName || 'Utente'}
+                                </span>
+                                <span className="text-[10px] uppercase font-bold text-blue-200 tracking-wider">
+                                    {careerStatus.levelName}
+                                </span>
+                            </div>
 
-                    <button
-                        onClick={onOpenTeamChallenge}
-                        className="p-2 rounded-full text-white/90 hover:bg-white/20 hover:scale-110 active:scale-95 transition-all duration-300 flex items-center justify-center"
-                        aria-label="Sfida Team"
-                        title="Classifica Team"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
-                    </button>
+                            <button
+                                onClick={onOpenSettings}
+                                className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all border border-white/10"
+                                aria-label="Settings"
+                            >
+                                <SettingsIcon />
+                            </button>
 
-                    {userProfile.firstName ? (
-                        <span className="text-sm font-bold text-white/95 hidden md:inline tracking-wide drop-shadow-sm">
-                            Ciao, {userProfile.firstName}!
-                        </span>
+                            <button
+                                onClick={onLogout}
+                                className="p-2 rounded-full bg-red-500/20 hover:bg-red-500/40 text-red-100 hover:text-white transition-all border border-red-400/20"
+                                aria-label="Logout"
+                                title="Esci"
+                            >
+                                <LogoutIcon />
+                            </button>
+                        </div>
                     ) : (
-                        <span
-                            onClick={onOpenSettings}
-                            className="text-white/90 text-sm font-medium hover:text-white cursor-pointer transition-colors hidden md:inline border-b border-white/40 hover:border-white"
+                        <button
+                            onClick={onLogin}
+                            className="ml-2 px-4 py-2 rounded-xl bg-white text-blue-700 font-black text-sm shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all"
                         >
-                            Inserisci nome
-                        </span>
+                            Accedi
+                        </button>
                     )}
 
+                    {/* Mobile Settings/Menu triggers if needed, currently reusing logic above */}
                     <button
                         onClick={onOpenSettings}
-                        className="flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-xl text-sm font-bold text-blue-700 bg-white shadow-lg shadow-blue-900/20 hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 border-2 border-transparent hover:border-blue-200"
-                        aria-label="Apri impostazioni"
+                        className="md:hidden p-2 rounded-full text-white hover:bg-white/20"
                     >
-                        <SettingsIcon className="h-5 w-5 text-blue-600 animate-spin-slow-on-hover" />
-                        <span className="hidden sm:inline">Settings</span>
-                    </button>
-
-                    <button
-                        onClick={onOpenDeleteDataModal}
-                        className="p-2 rounded-full text-white/80 hover:text-rose-100 hover:bg-rose-500/30 transition-all duration-300"
-                        aria-label="Cancella dati attività"
-                    >
-                        <TrashIcon />
+                        <SettingsIcon />
                     </button>
                 </div>
             </div>
