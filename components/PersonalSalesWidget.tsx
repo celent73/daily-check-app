@@ -6,21 +6,47 @@ interface PersonalSalesWidgetProps {
     monthlyEarnings: number;
     visionBoardData?: VisionBoardData;
     onOpenSettings?: () => void;
+    onUpdateTarget?: (newAmount: number) => void;
 }
 
 const PersonalSalesWidget: React.FC<PersonalSalesWidgetProps> = ({
     dailyEarnings,
     monthlyEarnings,
     visionBoardData,
-    onOpenSettings
+    onOpenSettings,
+    onUpdateTarget
 }) => {
     // Determine progress if vision board is active
     const target = visionBoardData?.enabled ? visionBoardData.targetAmount : 0;
     const progress = target > 0 ? Math.min(100, (monthlyEarnings / target) * 100) : 0;
     const remaining = Math.max(0, target - monthlyEarnings);
 
-    // Default image if not provided
-    const bgImage = visionBoardData?.imageData || 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&q=80&w=1000';
+    const [isEditing, setIsEditing] = React.useState(false);
+    const [editValue, setEditValue] = React.useState(target.toString());
+
+    // Update edit value when target changes (e.g. from props)
+    React.useEffect(() => {
+        setEditValue(target.toString());
+    }, [target]);
+
+    const handleSave = () => {
+        const newTarget = parseFloat(editValue);
+        if (!isNaN(newTarget) && newTarget >= 0) {
+            if (onUpdateTarget) {
+                onUpdateTarget(newTarget);
+            } else if (onOpenSettings) {
+                // Fallback if no direct updater
+                onOpenSettings();
+            }
+        }
+        setIsEditing(false);
+    };
+
+    // Keep enter key support
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') handleSave();
+        if (e.key === 'Escape') setIsEditing(false);
+    };
 
     return (
         <div className="relative overflow-hidden rounded-3xl mb-6 shadow-xl group border-2 border-white/20 dark:border-slate-700">
@@ -47,10 +73,22 @@ const PersonalSalesWidget: React.FC<PersonalSalesWidgetProps> = ({
                         <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-200 mb-1">
                             GUADAGNI DA VENDITE PERSONALI
                         </h3>
-                        {visionBoardData?.enabled && (
-                            <div className="flex items-center gap-1.5 cursor-pointer hover:text-blue-200 transition-colors" onClick={onOpenSettings}>
+                        {isEditing ? (
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="number"
+                                    value={editValue}
+                                    onChange={(e) => setEditValue(e.target.value)}
+                                    onKeyDown={handleKeyDown}
+                                    className="w-24 bg-white/20 border border-white/30 rounded px-2 py-1 text-sm font-bold text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/50"
+                                    autoFocus
+                                />
+                                <button onClick={handleSave} className="text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded font-bold">OK</button>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-1.5 cursor-pointer hover:text-blue-200 transition-colors" onClick={() => setIsEditing(true)}>
                                 <span className="text-xs font-bold text-white/90 truncate max-w-[200px]">
-                                    {visionBoardData.title || "Il mio obiettivo"}
+                                    {visionBoardData?.enabled ? `Il mio obiettivo: €${target}` : "Imposta Obiettivo 🖊️"}
                                 </span>
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 opacity-70" viewBox="0 0 20 20" fill="currentColor">
                                     <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />

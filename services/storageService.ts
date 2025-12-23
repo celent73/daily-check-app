@@ -46,11 +46,19 @@ export const loadLogs = async (userId: string | null): Promise<ActivityLog[]> =>
 
     if (error) {
       console.error('Error loading logs from Supabase:', error);
-      // Fallback to local? Maybe not to avoid confusion, but helpful if offline.
-      // For now, return empty or cached if we implement offline-first later.
       return [];
     }
-    return data as ActivityLog[];
+
+    // Map snake_case DB columns to camelCase App properties
+    const mappedData = data.map((item: any) => ({
+      ...item,
+      contractDetails: item.contract_details, // Crucial mapping
+      leads: item.leads,
+      counts: item.counts,
+      date: item.date
+    }));
+
+    return mappedData as ActivityLog[];
   } else {
     // LOCAL MODE
     return getLocalLogs();

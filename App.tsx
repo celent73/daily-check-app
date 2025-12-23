@@ -321,8 +321,8 @@ const AppContent: React.FC = () => {
       return sortedLogs;
     });
   }, [settings, checkAndNotify, unlockedAchievements, addNotification, effectiveGoals, userId]);
-  const handleUpdateActivity = (activity: ActivityType, change: number, dateStr: string = getTodayDateString()) => {
-    updateActivityLog([{ activity, change }], dateStr);
+  const handleUpdateActivity = (activity: ActivityType, change: number, dateStr: string = getTodayDateString(), contractType?: ContractType) => {
+    updateActivityLog([{ activity, change, contractType }], dateStr);
   };
 
   const handleContractSelection = (type: ContractType) => {
@@ -346,6 +346,25 @@ const AppContent: React.FC = () => {
     updateActivityLog(updates, dateStr);
 
     setIsContractSelectorModalOpen(false);
+  };
+
+  // Simplified Target Update (Inline)
+  const handleUpdateTarget = (newAmount: number) => {
+    setSettings(prev => {
+      const updatedSettings = {
+        ...prev,
+        visionBoard: {
+          ...prev.visionBoard,
+          enabled: true, // Auto-enable if setting a target
+          targetAmount: newAmount,
+          // Preserve other fields if they exist, or defaults
+          title: prev.visionBoard?.title || "Il mio obiettivo",
+          imageData: prev.visionBoard?.imageData || null
+        } as VisionBoardData // Cast needed if optional
+      };
+      return updatedSettings;
+    });
+    addNotification("Obiettivo aggiornato! 🎯", "success");
   };
 
   const handleSaveSettings = (newSettings: AppSettings) => {
@@ -583,6 +602,7 @@ const AppContent: React.FC = () => {
                 visionBoardData={settings.visionBoard}
                 nextAppointment={settings.nextAppointment}
                 onOpenSettings={handleOpenSettings}
+                onUpdateTarget={handleUpdateTarget}
                 onOpenVisionBoardSettings={() => setIsVisionBoardModalOpen(true)}
                 onOpenLeadCapture={handleOpenLeadCapture}
                 onOpenCalendar={() => setIsCalendarModalOpen(true)}

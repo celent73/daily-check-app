@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ActivityType, VisionBoardData, NextAppointment, ActivityLog } from '../types';
+import { ActivityType, VisionBoardData, NextAppointment, ActivityLog, ContractType } from '../types';
 import { ACTIVITY_LABELS, ACTIVITY_COLORS, activityIcons } from '../constants';
 import { formatItalianDate, getCommercialMonthString, getDaysUntilCommercialMonthEnd, getCommercialMonthProgress } from '../utils/dateUtils';
 import PersonalSalesWidget from './PersonalSalesWidget';
@@ -352,7 +352,40 @@ const ActivityInput: React.FC<ActivityInputProps> = ({
                                 <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 rounded-xl p-1 border border-slate-200 dark:border-slate-600">
                                     <button
                                         type="button"
-                                        onClick={() => onUpdateActivity(activity, -1, selectedDateStr)}
+                                        onClick={() => {
+                                            // Smart Decrement for Contracts
+                                            if (activity === ActivityType.NEW_CONTRACTS && currentLog?.contractDetails) {
+                                                const green = currentLog.contractDetails[ContractType.GREEN] || 0;
+                                                const light = currentLog.contractDetails[ContractType.LIGHT] || 0;
+
+                                                if (green > 0 && light === 0) {
+                                                    onUpdateActivity(activity, -1, selectedDateStr, ContractType.GREEN);
+                                                } else if (light > 0 && green === 0) {
+                                                    onUpdateActivity(activity, -1, selectedDateStr, ContractType.LIGHT);
+                                                } else if (green > 0 && light > 0) {
+                                                    // Both exist: ask user implies complexity. 
+                                                    // "Simple" strategy: Remove GREEN first (higher value) or last added?
+                                                    // Let's assume removing the most valuable one is safer to avoid accidental high earnings?
+                                                    // Or just generic decrement? Generic decrement WON'T update earnings.
+                                                    // User asked "ability to reset". 
+                                                    // Let's remove GREEN by default if present, or maybe show a toast?
+                                                    // BEST UX: Just remove one. Which one?
+                                                    // Let's default to removing Green. Or we can toggle?
+                                                    // Actually, if I remove Green, I should say so.
+                                                    if (window.confirm("Quale contratto vuoi rimuovere?\nOK = Green\nAnnulla = Light")) {
+                                                        onUpdateActivity(activity, -1, selectedDateStr, ContractType.GREEN);
+                                                    } else {
+                                                        onUpdateActivity(activity, -1, selectedDateStr, ContractType.LIGHT);
+                                                    }
+                                                } else {
+                                                    // No details recorded but count > 0? (Legacy data)
+                                                    onUpdateActivity(activity, -1, selectedDateStr);
+                                                }
+                                            } else {
+                                                // Normal activity or no details
+                                                onUpdateActivity(activity, -1, selectedDateStr);
+                                            }
+                                        }}
                                         disabled={count === 0}
                                         className="w-9 h-9 flex items-center justify-center rounded-lg bg-white dark:bg-slate-700 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors disabled:opacity-30 disabled:hover:bg-white dark:disabled:hover:bg-slate-700 disabled:hover:text-slate-400 shadow-sm border border-slate-100 dark:border-slate-600 active:scale-95"
                                     >
