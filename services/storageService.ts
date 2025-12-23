@@ -176,14 +176,15 @@ export const saveSettings = async (userId: string | null, settings: AppSettings)
 
     // Save Profile (User Profile is inside settings in the App state, but separate table in DB)
     if (settings.userProfile) {
-      const { error: profileError } = await supabase.from('profiles').update({
+      const { error: profileError } = await supabase.from('profiles').upsert({
+        id: userId,
         first_name: settings.userProfile.firstName,
         last_name: settings.userProfile.lastName,
         commission_status: settings.userProfile.commissionStatus,
         current_qualification: settings.userProfile.currentQualification,
         target_qualification: settings.userProfile.targetQualification,
         updated_at: new Date().toISOString()
-      }).eq('id', userId);
+      });
 
       if (profileError) console.error("Error saving profile:", profileError);
     }
